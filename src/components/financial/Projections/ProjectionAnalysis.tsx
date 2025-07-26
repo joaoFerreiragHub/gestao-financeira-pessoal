@@ -7,7 +7,7 @@ import {
   calculateTotalDebt,
   calculateFinancialHealth,
   calculateDebtPayoffTime
-} from '../../../utils/financial'
+} from '../../../types/financial'
 
 interface ProjectionAnalysisProps {
   projections: ProjectionData[]

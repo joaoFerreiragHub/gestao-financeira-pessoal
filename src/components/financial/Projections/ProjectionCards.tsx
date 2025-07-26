@@ -1,5 +1,5 @@
 import type { ProjectionData } from '../../../types/pageContext'
-import { formatCurrency } from '../../../utils/financial'
+import { formatCurrency } from '../../../types/financial'
 
 interface ProjectionCardsProps {
   projections: ProjectionData[]

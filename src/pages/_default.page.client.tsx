@@ -1,13 +1,13 @@
+// src/pages/_default.page.client.tsx
 import { hydrateRoot } from 'react-dom/client'
 import type { PageContext } from '../types/pageContext'
-import { PageShell } from '../servidor/PageShell'
-
+import { PageShell } from '../renderer/PageShell'
+import '../index.css'
 
 // Lista de propriedades que devem ser passadas do servidor para o cliente
-export const passToClient = ['routeParams', 'pageProps', 'user']
+export const passToClient = ['routeParams', 'pageProps']
 
 export const render = (pageContext: PageContext) => {
-  // Debug logs (removíveis em produção)
   console.log('Cliente: Iniciando hidratação', pageContext)
   
   if (!pageContext) {
@@ -28,14 +28,14 @@ export const render = (pageContext: PageContext) => {
     // Hidratação da aplicação
     hydrateRoot(
       appElement,
-      <PageShell>
+      <PageShell pageContext={pageContext}>
         <Page {...(pageProps || {})} />
       </PageShell>
     )
     
     console.log('Cliente: Hidratação concluída com sucesso')
     
-    // Marcar hidratação como completa (útil para analytics)
+    // Marcar hidratação como completa
     if (typeof window !== 'undefined') {
       window.__HYDRATION_COMPLETE__ = true
     }
@@ -48,7 +48,7 @@ export const render = (pageContext: PageContext) => {
       console.warn('Fallback: Renderizando do zero no cliente')
       const root = createRoot(appElement)
       root.render(
-        <PageShell>
+        <PageShell pageContext={pageContext}>
           <Page {...(pageProps || {})} />
         </PageShell>
       )

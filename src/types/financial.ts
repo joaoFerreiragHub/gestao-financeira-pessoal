@@ -1,10 +1,12 @@
+// src/utils/calculations.ts
 import type { 
   Account, 
   Income, 
   Expense, 
   Debt, 
   FinancialState, 
-  ProjectionData 
+  ProjectionData,
+  FinancialHealth 
 } from '../types/pageContext'
 
 /**
@@ -169,6 +171,13 @@ export const simulateDebtPayment = (
 }
 
 /**
+ * Gerar projeções financeiras futuras (renomeado para manter compatibilidade)
+ */
+export const calculateProjections = (state: FinancialState, years: number = 15): ProjectionData[] => {
+  return generateProjections(state, years)
+}
+
+/**
  * Gerar projeções financeiras futuras
  */
 export const generateProjections = (state: FinancialState, years: number = 15): ProjectionData[] => {
@@ -200,13 +209,12 @@ export const generateProjections = (state: FinancialState, years: number = 15): 
       netWorth: projectedNetWorth,
       totalDebt: projectedTotalDebt,
       savings: projectedSavings,
-      initialDebt: currentTotalDebt // <- comparação futura
+      initialDebt: currentTotalDebt
     })
   }
 
   return projections
 }
-
 
 /**
  * Calcular tempo estimado para quitar dívidas
@@ -243,9 +251,9 @@ export const calculateDebtPayoffTime = (debts: Debt[]): number => {
 }
 
 /**
- * Calcular indicadores de saúde financeira
+ * Calcular indicadores de saúde financeira (compatível com interface FinancialHealth)
  */
-export const calculateFinancialHealth = (state: FinancialState) => {
+export const calculateFinancialHealth = (state: FinancialState): FinancialHealth => {
   const netWorth = calculateNetWorth(state)
   const savingsRate = calculateSavingsRate(state)
   const debtToAssetRatio = calculateDebtToAssetRatio(state)
@@ -275,15 +283,22 @@ export const calculateFinancialHealth = (state: FinancialState) => {
   else if (emergencyFundMonths >= 3) healthScore += 15
   else if (emergencyFundMonths >= 1) healthScore += 10
   
+  // Determinar nível baseado no score
+  let level: 'poor' | 'fair' | 'good' | 'excellent'
+  if (healthScore >= 80) level = 'excellent'
+  else if (healthScore >= 60) level = 'good'
+  else if (healthScore >= 40) level = 'fair'
+  else level = 'poor'
+  
   return {
     score: healthScore,
-    netWorth,
+    status:
+      healthScore >= 80 ? 'Excelente' :
+      healthScore >= 60 ? 'Boa' :
+      healthScore >= 40 ? 'Razoável' :
+      'Fraca',
     savingsRate,
     debtToAssetRatio,
-    monthlySavings,
-    emergencyFundMonths,
-    status: healthScore >= 80 ? 'Excelente' : 
-            healthScore >= 60 ? 'Bom' : 
-            healthScore >= 40 ? 'Regular' : 'Precisa Melhorar'
+    emergencyFundMonths
   }
 }

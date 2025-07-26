@@ -1,6 +1,18 @@
+// src/types/pageContext.ts
+import type { PageContextBuiltInClientWithClientRouting } from 'vite-plugin-ssr/types'
 import type { ReactNode } from 'react'
+import type { 
+  PageContextServer as PageContextServerBuiltIn 
+} from 'vite-plugin-ssr/types'
 
-// Definições de tipos para dados financeiros
+// Tipos para dados financeiros
+export interface FinancialState {
+  accounts: Account[]
+  incomes: Income[]
+  expenses: Expense[]
+  debts: Debt[]
+}
+
 export interface Account {
   id: string
   name: string
@@ -31,48 +43,39 @@ export interface Debt {
   monthlyPayment: number
 }
 
-export interface FinancialState {
-  accounts: Account[]
-  incomes: Income[]
-  expenses: Expense[]
-  debts: Debt[]
-}
-
 export interface ProjectionData {
   year: number
   netWorth: number
   totalDebt: number
   savings: number
-   initialDebt?: number 
+  initialDebt?: number 
 }
 
-// Tipos específicos do SSR
-export interface PageProps {
-  // Dados iniciais que podem vir do servidor
+export interface FinancialHealth {
+  score: number
+  status: string
+  savingsRate: number
+  debtToAssetRatio: number
+  emergencyFundMonths: number
+}
+// Props das páginas
+export type PageProps = {
   initialFinancialData?: FinancialState
-  user?: {
-    id: string
-    name: string
-    email: string
-  }
 }
 
-export interface PageContextBase {
-  Page: (pageProps: PageProps) => ReactNode
+// Componente de página
+export type Page = (props: PageProps) => ReactNode
+
+// Context customizado do servidor (renomeado para evitar conflito)
+export type PageContextCustomServer = PageContextServerBuiltIn & {
+  Page: Page
   pageProps?: PageProps
   routeParams: Record<string, string>
-  urlPathname: string
-  urlParsed: {
-    pathname: string
-    search: Record<string, string>
-  }
-  // Dados que são passados do servidor para o cliente
-  exports: {
-    passToClient?: string[]
-  }
-  // Dados específicos da nossa aplicação
-  user?: PageProps['user']
-  isHydrated?: boolean
 }
 
-export type PageContext = PageContextBase
+// Context customizado do cliente  
+export type PageContext = PageContextBuiltInClientWithClientRouting & {
+  Page: Page
+  pageProps?: PageProps
+  routeParams: Record<string, string>
+}

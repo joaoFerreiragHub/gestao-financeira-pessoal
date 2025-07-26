@@ -1,6 +1,16 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
-import type { Account } from '../../../types/pageContext'
+import { CreditCard, Plus } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card'
+import { Button } from '../../ui/button'
+import { Label } from '../../ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select'
+import { Input } from '../../ui/input'
+
+interface Account {
+  name: string
+  balance: number
+  type: 'checking' | 'savings' | 'investment'
+}
 
 interface AccountFormProps {
   onAddAccount: (account: Omit<Account, 'id'>) => void
@@ -13,59 +23,82 @@ export function AccountForm({ onAddAccount }: AccountFormProps) {
     type: 'checking'
   })
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
     if (formData.name && formData.balance >= 0) {
       onAddAccount(formData)
       setFormData({ name: '', balance: 0, type: 'checking' })
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSubmit()
-    }
+  const accountTypeLabels = {
+    checking: 'Conta Corrente',
+    savings: 'Poupança', 
+    investment: 'Investimento'
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900">Adicionar Nova Conta</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <input
-          type="text"
-          placeholder="Nome da conta"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          onKeyPress={handleKeyPress}
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        
-        <input
-          type="number"
-          placeholder="Saldo inicial"
-          value={formData.balance || ''}
-          onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
-          onKeyPress={handleKeyPress}
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        
-        <select
-          value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value as Account['type'] })}
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="checking">Conta Corrente</option>
-          <option value="savings">Poupança</option>
-          <option value="investment">Investimento</option>
-        </select>
-        
-        <button
-          onClick={handleSubmit}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 justify-center font-medium"
-        >
-          <Plus size={18} /> Adicionar
-        </button>
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5" />
+          Adicionar Nova Conta
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="account-name">Nome da conta</Label>
+              <Input
+                id="account-name"
+                type="text"
+                placeholder="Ex: Banco CTT"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="account-balance">Saldo inicial</Label>
+              <Input
+                id="account-balance"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.balance || ''}
+                onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
+                min="0"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="account-type">Tipo de conta</Label>
+              <Select value={formData.type} onValueChange={(value: Account['type']) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(accountTypeLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-end">
+              <Button type="submit" className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar
+              </Button>
+            </div>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

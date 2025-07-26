@@ -1,67 +1,119 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+// src/components/financial/Projections/ProjectionsChart.tsx
+import { useState, useEffect } from 'react'
 import type { ProjectionData } from '../../../types/pageContext'
-import { formatCurrency } from '../../../utils/financial'
 
-interface ProjectionsChartProps {
+export interface ProjectionsChartProps {
   projections: ProjectionData[]
   isReady: boolean
 }
 
-export function ProjectionsChart({ projections, isReady }: ProjectionsChartProps) {
-  if (!isReady) {
+function ClientOnlyProjectionsChart({ projections }: Omit<ProjectionsChartProps, 'isReady'>) {
+  const [RechartsComponents, setRechartsComponents] = useState<any>(null)
+
+  useEffect(() => {
+    const loadRecharts = async () => {
+      try {
+        const recharts = await import('recharts')
+        setRechartsComponents(recharts)
+      } catch (error) {
+        console.error('Erro ao carregar Recharts:', error)
+      }
+    }
+
+    loadRecharts()
+  }, [])
+
+  if (!RechartsComponents || projections.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Projeções Financeiras</h3>
+        <div className="h-80 flex items-center justify-center bg-gray-50 rounded">
+          {!RechartsComponents ? (
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-gray-500">A carregar gráfico...</p>
+            </div>
+          ) : (
+            <p className="text-gray-500">Adicione dados financeiros para ver as projeções</p>
+          )}
         </div>
       </div>
     )
   }
 
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = RechartsComponents
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900">
-        Projeções Financeiras (15 anos)
-      </h2>
-      
+    <div className="bg-white p-6 rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">Projeções Financeiras (15 anos)</h3>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={projections}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="year" 
-            label={{ value: 'Anos', position: 'insideBottom', offset: -10 }} 
+            label={{ value: 'Anos', position: 'insideBottom', offset: -5 }}
           />
           <YAxis 
-            label={{ value: 'Valor (€)', angle: -90, position: 'insideLeft' }} 
+            label={{ value: 'Valor (€)', angle: -90, position: 'insideLeft' }}
+            tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
           />
           <Tooltip 
-            formatter={(value) => formatCurrency(Number(value))}
+            formatter={(value: number, name: string) => [
+              `€${value.toLocaleString()}`, 
+              name === 'netWorth' ? 'Valor Líquido' : 
+              name === 'totalDebt' ? 'Dívidas' : 
+              name === 'savings' ? 'Poupanças' : name
+            ]}
             labelFormatter={(label) => `Ano ${label}`}
           />
+          <Legend />
           <Line 
             type="monotone" 
             dataKey="netWorth" 
-            stroke="#3b82f6" 
-            strokeWidth={3} 
-            name="Patrimônio Líquido" 
+            stroke="#10B981" 
+            strokeWidth={2}
+            name="Valor Líquido"
           />
           <Line 
             type="monotone" 
             dataKey="totalDebt" 
-            stroke="#ef4444" 
-            strokeWidth={2} 
-            name="Dívidas" 
+            stroke="#EF4444" 
+            strokeWidth={2}
+            name="Dívidas"
           />
           <Line 
             type="monotone" 
             dataKey="savings" 
-            stroke="#22c55e" 
-            strokeWidth={2} 
-            name="Economias Acumuladas" 
+            stroke="#3B82F6" 
+            strokeWidth={2}
+            name="Poupanças Acumuladas"
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   )
+}
+
+export function ProjectionsChart({ projections, isReady }: ProjectionsChartProps) {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isReady || !isClient) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Projeções Financeiras</h3>
+        <div className="h-80 flex items-center justify-center bg-gray-50 rounded">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-500">A preparar projeções...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <ClientOnlyProjectionsChart projections={projections} />
 }

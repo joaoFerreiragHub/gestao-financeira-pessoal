@@ -1,6 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import type { Account } from '../../../types/pageContext'
-import { formatCurrency } from '../../../utils/financial'
+import { formatCurrency } from '../../../types/financial'
 
 interface AccountsListProps {
   accounts: Account[]

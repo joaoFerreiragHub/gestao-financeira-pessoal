@@ -1,17 +1,18 @@
+// src/pages/_default.page.server.tsx
 import ReactDOMServer from 'react-dom/server'
 import { escapeInject, dangerouslySkipEscape } from 'vite-plugin-ssr/server'
-import type { PageContext } from '../types/pageContext'
-import { PageShell } from '../servidor/PageShell'
+import { PageShell } from '../renderer/PageShell'
 
+export const passToClient = ['routeParams', 'pageProps'] as const
 
-export const passToClient = ['routeParams', 'pageProps', 'user']
-
-export const render = async (pageContext: PageContext) => {
+export function render(pageContext: any) {
+  console.log('Servidor: Renderizando página', pageContext.urlPathname)
+  
   const { Page, pageProps } = pageContext
 
   // Renderizar a aplicação no servidor
   const pageHtml = ReactDOMServer.renderToString(
-    <PageShell>
+    <PageShell pageContext={pageContext}>
       <Page {...(pageProps || {})} />
     </PageShell>
   )
@@ -35,6 +36,10 @@ export const render = async (pageContext: PageContext) => {
         justify-content: center; 
         height: 100vh; 
         font-family: system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       }
     </style>
     
