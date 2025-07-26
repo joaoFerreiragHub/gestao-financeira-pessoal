@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { 
   Download, Upload, Trash2, BarChart3, Wallet, TrendingUp, TrendingDown, 
-  AlertTriangle, PiggyBank, Eye, EyeOff, Menu, Home, CreditCard, Calculator,
+ PiggyBank, Eye, EyeOff, Menu, Home, CreditCard, Calculator,
   User, LogOut, Settings, Bell, Search, ChevronRight, Plus
 } from 'lucide-react'
+import { IncomeSection } from '../../components/financial/income/IncomeSection'
+
+// Importar o componente IncomeSection
+
 
 // Tipos básicos (mantidos do original)
 interface Account {
@@ -523,15 +527,22 @@ export function FinancialManagementPage() {
             </div>
           )}
 
-          {/* Outras seções com placeholder */}
-          {activeTab !== 'dashboard' && (
+          {/* ===== SEÇÃO DE RENDIMENTOS - USANDO O COMPONENTE COMPLETO ===== */}
+          {activeTab === 'income' && (
+            <IncomeSection 
+              showBalances={showBalances} 
+              onToggleBalances={() => setShowBalances(!showBalances)}
+            />
+          )}
+
+          {/* Outras seções mantêm o placeholder por enquanto */}
+          {activeTab !== 'dashboard' && activeTab !== 'income' && (
             <div className="bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BarChart3 className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Seção: {activeTab === 'accounts' ? 'Contas Bancárias' : 
-                         activeTab === 'income' ? 'Rendimentos' :
                          activeTab === 'expenses' ? 'Despesas' :
                          activeTab === 'debts' ? 'Dívidas' :
                          activeTab === 'projections' ? 'Projeções' :
@@ -540,7 +551,6 @@ export function FinancialManagementPage() {
               <p className="text-gray-600 mb-4">
                 Esta seção está em desenvolvimento. Aqui você encontrará todas as funcionalidades relacionadas a {
                   activeTab === 'accounts' ? 'contas bancárias' : 
-                  activeTab === 'income' ? 'rendimentos' :
                   activeTab === 'expenses' ? 'despesas' :
                   activeTab === 'debts' ? 'dívidas' :
                   activeTab === 'projections' ? 'projeções' :
@@ -550,7 +560,6 @@ export function FinancialManagementPage() {
               <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar {activeTab === 'accounts' ? 'Conta' : 
-                          activeTab === 'income' ? 'Rendimento' :
                           activeTab === 'expenses' ? 'Despesa' :
                           activeTab === 'debts' ? 'Dívida' :
                           activeTab === 'projections' ? 'Projeção' :
