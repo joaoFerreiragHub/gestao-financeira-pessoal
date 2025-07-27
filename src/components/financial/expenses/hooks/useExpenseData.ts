@@ -1,12 +1,7 @@
 // src/hooks/useExpenseData.ts
 
 import { useState, useEffect } from 'react';
-import { 
-  ExpenseCategory, 
-  ExpenseEntry, 
-  UseExpenseDataReturn, 
-  DEFAULT_EXPENSE_CATEGORIES 
-} from '../types/expenses';
+import { ExpenseCategory, ExpenseEntry, UseExpenseDataReturn } from '../../../../types/expenses';
 
 const STORAGE_KEYS = {
   CATEGORIES: 'expense-categories',

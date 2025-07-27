@@ -67,8 +67,8 @@ export interface ExpenseFilters {
     end: string;
   };
   amountRange?: {
-    min: number;
-    max: number;
+    min?: number;  // Mudança: agora min pode ser undefined
+    max?: number;  // Mudança: agora max pode ser undefined
   };
   search: string;
   tags?: string[];
