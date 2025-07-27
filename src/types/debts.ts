@@ -39,7 +39,7 @@ export interface DebtPayment {
   debtId: string;
   amount: number;
   date: string; // YYYY-MM-DD
-  paymentType: 'principal' | 'interest' | 'mixed'; // Tipo de pagamento
+    paymentType: 'principal' | 'interest' | 'mixed' | 'extra';
   principalAmount: number; // Valor aplicado ao principal
   interestAmount: number; // Valor de juros
   description?: string;

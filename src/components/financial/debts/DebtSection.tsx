@@ -8,14 +8,7 @@ import { useDebtData } from './hooks/useDebtData';
 import { useDebtStats } from './hooks/useDebtStats';
 
 // Componentes
-import { DebtStatsCard } from './DebtStatsCard';
-import { DebtCategoryManager } from './DebtCategoryManager';
-import { DebtHistory } from './DebtHistory';
-import { DebtFilters } from './DebtFilters';
-import { DebtCategoryForm } from './DebtCategoryForm';
-import { DebtEntryForm } from './DebtEntryForm';
-import { DebtPaymentManager } from './DebtPaymentManager';
-import { DebtStrategyManager } from './DebtStrategyManager';
+
 
 // Tipos
 import { 
@@ -23,6 +16,13 @@ import {
   DebtCategory, 
   DebtFilters as DebtFiltersType
 } from '../../../types/debts';
+import { DebtFilters } from './DebtFilters';
+import { DebtStatsCard } from './DebtStatsCard';
+import { DebtHistory } from './DebtHistory';
+import { DebtCategoryManager } from './DebtCategoryManager';
+import { DebtPaymentManager } from './DebtPaymentManager';
+import { DebtStrategyManager } from './DebtStrategyManager';
+import { DebtEntryForm } from './DebtEntryForm';
 
 interface DebtSectionProps {
   showBalances: boolean;

@@ -1,271 +1,412 @@
-// src/components/financial/debts/DebtStatsCard.tsx
+// src/components/financial/debts/DebtFilters.tsx
 
 import React from 'react';
-import { Calculator, TrendingDown, AlertTriangle, Target, Clock, Percent } from 'lucide-react';
-import { DebtStats } from '../../../types/debts';
+import { Search, Filter, X, Calendar, DollarSign, AlertTriangle, Target, Clock } from 'lucide-react';
+import { DebtFilters as DebtFiltersType, DebtCategory } from '../../../types/debts';
 
-interface DebtStatsCardProps {
-  stats: DebtStats;
-  showBalances: boolean;
-  formatCurrency: (amount: number) => string;
+interface DebtFiltersProps {
+  filters: DebtFiltersType;
+  onFiltersChange: (filters: DebtFiltersType) => void;
+  categories: DebtCategory[];
 }
 
-export const DebtStatsCard: React.FC<DebtStatsCardProps> = ({
-  stats,
-  showBalances,
-  formatCurrency,
+export const DebtFilters: React.FC<DebtFiltersProps> = ({
+  filters,
+  onFiltersChange,
+  categories,
 }) => {
-  const getDebtToIncomeColor = (ratio: number) => {
-    if (ratio <= 20) return 'text-green-600';
-    if (ratio <= 36) return 'text-yellow-600';
-    return 'text-red-600';
+  const handlePeriodChange = (period: DebtFiltersType['period']) => {
+    onFiltersChange({ ...filters, period, dateRange: undefined });
   };
 
-  const getDebtToIncomeStatus = (ratio: number) => {
-    if (ratio <= 20) return 'Excelente';
-    if (ratio <= 36) return 'Aceitável';
-    return 'Alto Risco';
+  const handleCategoryToggle = (categoryId: string) => {
+    const newCategories = filters.categories.includes(categoryId)
+      ? filters.categories.filter(id => id !== categoryId)
+      : [...filters.categories, categoryId];
+    
+    onFiltersChange({ ...filters, categories: newCategories });
   };
+
+  const handleSearchChange = (search: string) => {
+    onFiltersChange({ ...filters, search });
+  };
+
+  const handleAmountRangeChange = (field: 'min' | 'max', value: string) => {
+    const numValue = value === '' ? undefined : parseFloat(value);
+    const currentRange = filters.amountRange || {};
+    
+    const newRange = {
+      ...currentRange,
+      [field]: numValue,
+    };
+    
+    // Se ambos min e max são undefined, remove o amountRange completamente
+    if (newRange.min === undefined && newRange.max === undefined) {
+      onFiltersChange({
+        ...filters,
+        amountRange: undefined,
+      });
+    } else {
+      onFiltersChange({
+        ...filters,
+        amountRange: newRange,
+      });
+    }
+  };
+
+  const handlePriorityToggle = (priority: 'high' | 'medium' | 'low') => {
+    const currentPriorities = filters.priority || [];
+    const newPriorities = currentPriorities.includes(priority)
+      ? currentPriorities.filter(p => p !== priority)
+      : [...currentPriorities, priority];
+    
+    onFiltersChange({ 
+      ...filters, 
+      priority: newPriorities.length > 0 ? newPriorities : undefined 
+    });
+  };
+
+  const handleDebtTypeToggle = (debtType: 'fixed' | 'revolving' | 'installment') => {
+    const currentTypes = filters.debtType || [];
+    const newTypes = currentTypes.includes(debtType)
+      ? currentTypes.filter(t => t !== debtType)
+      : [...currentTypes, debtType];
+    
+    onFiltersChange({ 
+      ...filters, 
+      debtType: newTypes.length > 0 ? newTypes : undefined 
+    });
+  };
+
+  const handleActiveFilter = (isActive: boolean | null) => {
+    onFiltersChange({ ...filters, isActive });
+  };
+
+  const clearFilters = () => {
+    onFiltersChange({
+      period: 'all',
+      categories: [],
+      search: '',
+      amountRange: undefined,
+      priority: undefined,
+      debtType: undefined,
+      isActive: null,
+    });
+  };
+
+  const hasActiveFilters = filters.period !== 'all' || 
+                          filters.categories.length > 0 || 
+                          filters.search !== '' ||
+                          filters.amountRange ||
+                          (filters.priority && filters.priority.length > 0) ||
+                          (filters.debtType && filters.debtType.length > 0) ||
+                          filters.isActive !== null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Total de Dívidas */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
+    <div className="bg-white p-6 rounded-xl border border-gray-200 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Filter className="h-5 w-5 text-gray-500" />
+          <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
+        </div>
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
+          >
+            <X className="h-4 w-4" />
+            Limpar Filtros
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Período */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Calendar className="h-4 w-4 inline mr-1" />
+            Período (Vencimento)
+          </label>
+          <select
+            value={filters.period}
+            onChange={(e) => handlePeriodChange(e.target.value as DebtFiltersType['period'])}
+            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          >
+            <option value="all">Todos os períodos</option>
+            <option value="thisMonth">Este mês</option>
+            <option value="lastMonth">Mês anterior</option>
+            <option value="thisYear">Este ano</option>
+            <option value="lastYear">Ano anterior</option>
+            <option value="custom">Período customizado</option>
+          </select>
+        </div>
+
+        {/* Busca */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Search className="h-4 w-4 inline mr-1" />
+            Buscar
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Credor, descrição, tags..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+          </div>
+        </div>
+
+        {/* Faixa de Valor */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <DollarSign className="h-4 w-4 inline mr-1" />
+            Saldo Atual (€)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={filters.amountRange?.min?.toString() || ''}
+              onChange={(e) => handleAmountRangeChange('min', e.target.value)}
+              placeholder="Min"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              min="0"
+              step="0.01"
+            />
+            <input
+              type="number"
+              value={filters.amountRange?.max?.toString() || ''}
+              onChange={(e) => handleAmountRangeChange('max', e.target.value)}
+              placeholder="Max"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              min="0"
+              step="0.01"
+            />
+          </div>
+        </div>
+
+        {/* Status */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Status da Dívida
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="activeFilter"
+                checked={filters.isActive === null}
+                onChange={() => handleActiveFilter(null)}
+                className="mr-2 text-orange-600 focus:ring-orange-500"
+              />
+              <span className="text-sm">Todas</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="activeFilter"
+                checked={filters.isActive === true}
+                onChange={() => handleActiveFilter(true)}
+                className="mr-2 text-orange-600 focus:ring-orange-500"
+              />
+              <span className="text-sm">Ativas</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="activeFilter"
+                checked={filters.isActive === false}
+                onChange={() => handleActiveFilter(false)}
+                className="mr-2 text-orange-600 focus:ring-orange-500"
+              />
+              <span className="text-sm">Quitadas</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Período Customizado */}
+      {filters.period === 'custom' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           <div>
-            <p className="text-sm font-medium text-gray-600">Total de Dívidas</p>
-            <p className="text-2xl font-bold text-red-600">
-              {showBalances ? formatCurrency(stats.totalDebt) : '€•••••'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Saldo atual devedor
-            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data Inicial
+            </label>
+            <input
+              type="date"
+              value={filters.dateRange?.start || ''}
+              onChange={(e) => onFiltersChange({
+                ...filters,
+                dateRange: { ...filters.dateRange, start: e.target.value, end: filters.dateRange?.end || '' }
+              })}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
           </div>
-      </div>
-
-      {/* Tempo para Quitação */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">Tempo para Quitação</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {stats.payoffProjection.months > 0 ? `${Math.floor(stats.payoffProjection.months / 12)}a ${stats.payoffProjection.months % 12}m` : 'N/A'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Com pagamentos atuais
-            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data Final
+            </label>
+            <input
+              type="date"
+              value={filters.dateRange?.end || ''}
+              onChange={(e) => onFiltersChange({
+                ...filters,
+                dateRange: { ...filters.dateRange, start: filters.dateRange?.start || '', end: e.target.value }
+              })}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
           </div>
-          <div className="p-3 bg-blue-100 rounded-lg">
-            <Clock className="h-6 w-6 text-blue-600" />
-          </div>
+        </div>
+      )}
+
+      {/* Filtro por Prioridade */}
+      <div className="pt-4 border-t border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Prioridade ({(filters.priority || []).length} selecionadas)
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handlePriorityToggle('high')}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.priority || []).includes('high')
+                ? 'bg-red-100 text-red-800 border-2 border-red-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <span>Alta</span>
+          </button>
+          <button
+            onClick={() => handlePriorityToggle('medium')}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.priority || []).includes('medium')
+                ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            <Target className="h-4 w-4" />
+            <span>Média</span>
+          </button>
+          <button
+            onClick={() => handlePriorityToggle('low')}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.priority || []).includes('low')
+                ? 'bg-green-100 text-green-800 border-2 border-green-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            <Clock className="h-4 w-4" />
+            <span>Baixa</span>
+          </button>
         </div>
       </div>
 
-      {/* Juros Totais Projetados */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Juros Totais</p>
-            <p className="text-2xl font-bold text-yellow-600">
-              {showBalances ? formatCurrency(stats.payoffProjection.totalInterest) : '€•••••'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Custo total projetado
-            </p>
-          </div>
-          <div className="p-3 bg-yellow-100 rounded-lg">
-            <Percent className="h-6 w-6 text-yellow-600" />
-          </div>
+      {/* Filtro por Tipo de Dívida */}
+      <div className="pt-4 border-t border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Tipo de Dívida ({(filters.debtType || []).length} selecionados)
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleDebtTypeToggle('fixed')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.debtType || []).includes('fixed')
+                ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            Fixa
+          </button>
+          <button
+            onClick={() => handleDebtTypeToggle('revolving')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.debtType || []).includes('revolving')
+                ? 'bg-purple-100 text-purple-800 border-2 border-purple-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            Rotativa
+          </button>
+          <button
+            onClick={() => handleDebtTypeToggle('installment')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              (filters.debtType || []).includes('installment')
+                ? 'bg-green-100 text-green-800 border-2 border-green-300'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+            }`}
+          >
+            Prestações
+          </button>
         </div>
       </div>
 
-      {/* Progresso Este Ano */}
-      <div className="md:col-span-2 lg:col-span-3 bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-200">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Progresso Este Ano</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {showBalances ? formatCurrency(stats.totalPrincipalPaid) : '€•••••'}
-            </p>
-            <p className="text-sm text-gray-600">Principal Pago</p>
-            <p className="text-xs text-gray-500 mt-1">Redução da dívida</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-red-600">
-              {showBalances ? formatCurrency(stats.totalInterestPaid) : '€•••••'}
-            </p>
-            <p className="text-sm text-gray-600">Juros Pagos</p>
-            <p className="text-xs text-gray-500 mt-1">Custo do capital</p>
-          </div>
-          <div className="text-center">
-            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-              <div 
-                className="bg-green-600 h-3 rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${stats.totalPrincipalPaid + stats.totalInterestPaid > 0 
-                    ? (stats.totalPrincipalPaid / (stats.totalPrincipalPaid + stats.totalInterestPaid)) * 100 
-                    : 0}%` 
-                }}
-              ></div>
-            </div>
-            <p className="text-sm text-gray-600">Eficiência dos Pagamentos</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.totalPrincipalPaid + stats.totalInterestPaid > 0 
-                ? `${((stats.totalPrincipalPaid / (stats.totalPrincipalPaid + stats.totalInterestPaid)) * 100).toFixed(1)}% para principal`
-                : 'Sem dados'
-              }
-            </p>
+      {/* Filtro por Categorias */}
+      {categories.length > 0 && (
+        <div className="pt-4 border-t border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Categorias ({filters.categories.length} selecionadas)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => handleCategoryToggle(category.id)}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  filters.categories.includes(category.id)
+                    ? 'bg-orange-100 text-orange-800 border-2 border-orange-300'
+                    : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+                }`}
+              >
+                <span>{category.icon}</span>
+                <span>{category.name}</span>
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Distribuição por Prioridade */}
-      <div className="md:col-span-2 lg:col-span-3 bg-white p-6 rounded-xl border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Distribuição por Prioridade</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Alta Prioridade */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <h4 className="font-semibold text-red-900">Alta Prioridade</h4>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Dívidas:</span>
-                <span className="font-medium">{stats.byPriority.high.count}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total:</span>
-                <span className="font-medium text-red-700">
-                  {showBalances ? formatCurrency(stats.byPriority.high.totalDebt) : '€•••••'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Mensal:</span>
-                <span className="font-medium">
-                  {showBalances ? formatCurrency(stats.byPriority.high.monthlyPayment) : '€•••••'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Média Prioridade */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Target className="h-5 w-5 text-yellow-600" />
-              <h4 className="font-semibold text-yellow-900">Média Prioridade</h4>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Dívidas:</span>
-                <span className="font-medium">{stats.byPriority.medium.count}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total:</span>
-                <span className="font-medium text-yellow-700">
-                  {showBalances ? formatCurrency(stats.byPriority.medium.totalDebt) : '€•••••'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Mensal:</span>
-                <span className="font-medium">
-                  {showBalances ? formatCurrency(stats.byPriority.medium.monthlyPayment) : '€•••••'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Baixa Prioridade */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="h-5 w-5 text-green-600" />
-              <h4 className="font-semibold text-green-900">Baixa Prioridade</h4>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Dívidas:</span>
-                <span className="font-medium">{stats.byPriority.low.count}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total:</span>
-                <span className="font-medium text-green-700">
-                  {showBalances ? formatCurrency(stats.byPriority.low.totalDebt) : '€•••••'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Mensal:</span>
-                <span className="font-medium">
-                  {showBalances ? formatCurrency(stats.byPriority.low.monthlyPayment) : '€•••••'}
-                </span>
-              </div>
-            </div>
+      {/* Resumo dos Filtros Ativos */}
+      {hasActiveFilters && (
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap gap-2">
+            {filters.period !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                Período: {filters.period}
+                <button
+                  onClick={() => handlePeriodChange('all')}
+                  className="hover:bg-orange-200 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {filters.search && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                Busca: "{filters.search}"
+                <button
+                  onClick={() => handleSearchChange('')}
+                  className="hover:bg-blue-200 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {filters.isActive !== null && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                {filters.isActive ? 'Ativas' : 'Quitadas'}
+                <button
+                  onClick={() => handleActiveFilter(null)}
+                  className="hover:bg-green-200 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
-          <div className="p-3 bg-red-100 rounded-lg">
-            <Calculator className="h-6 w-6 text-red-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pagamentos Mensais */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Pagamentos Mensais</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {showBalances ? formatCurrency(stats.totalMonthlyPayments) : '€•••••'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Comprometimento mensal
-            </p>
-          </div>
-          <div className="p-3 bg-orange-100 rounded-lg">
-            <TrendingDown className="h-6 w-6 text-orange-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Taxa Média de Juros */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Taxa Média</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {stats.averageInterestRate.toFixed(1)}%
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Taxa ponderada anual
-            </p>
-          </div>
-          <div className="p-3 bg-purple-100 rounded-lg">
-            <Percent className="h-6 w-6 text-purple-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Ratio Dívida/Renda */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Ratio Dívida/Renda</p>
-            <p className={`text-2xl font-bold ${getDebtToIncomeColor(stats.debtToIncomeRatio)}`}>
-              {stats.debtToIncomeRatio.toFixed(1)}%
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {getDebtToIncomeStatus(stats.debtToIncomeRatio)}
-            </p>
-          </div>
-          <div className={`p-3 rounded-lg ${
-            stats.debtToIncomeRatio <= 20 ? 'bg-green-100' :
-            stats.debtToIncomeRatio <= 36 ? 'bg-yellow-100' : 'bg-red-100'
-          }`}>
-            {stats.debtToIncomeRatio > 36 ? (
-              <AlertTriangle className={`h-6 w-6 ${getDebtToIncomeColor(stats.debtToIncomeRatio)}`} />
-            ) : (
-              <Target className={`h-6 w-6 ${getDebtToIncomeColor(stats.debtToIncomeRatio)}`} />
-            )}
-          </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Edit3, Trash2, Calendar, DollarSign, TrendingDown, TrendingUp, Target } from 'lucide-react';
-import { DebtEntry, DebtPayment } from '../../../types/debts';
+import { DebtEntry, DebtPayment } from '../../../../types/debts';
 
 interface PaymentTableProps {
   payments: DebtPayment[];

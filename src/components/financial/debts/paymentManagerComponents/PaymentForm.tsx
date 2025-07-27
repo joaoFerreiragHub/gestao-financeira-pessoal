@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, DollarSign, AlertCircle } from 'lucide-react';
-import { DebtEntry, DebtPayment, DebtPaymentFormData } from '../../../types/debts';
+import { DebtEntry, DebtPayment, DebtPaymentFormData } from '../../../../types/debts';
 
 interface PaymentFormProps {
   debts: DebtEntry[];
