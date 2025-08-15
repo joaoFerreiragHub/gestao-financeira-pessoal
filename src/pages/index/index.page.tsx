@@ -10,6 +10,10 @@ import { QuickFeedback } from '../../components/ui/QuickFeedback'
 // Componentes existentes
 import { IncomeSection } from '../../components/financial/income/IncomeSection'
 import { ExpenseSection } from '../../components/financial/expenses/ExpenseSection'
+import { AccountSection } from '../../components/financial/accounts/AccountSection'
+import { ReportsSection } from '../../components/financial/reports/ReportsSection'
+import { GoalsSection } from '../../components/financial/goals/GoalsSection'
+import { DebtSection } from '../../components/financial/debts/DebtSection'
 
 // Tipos consolidados
 import type {
@@ -34,6 +38,7 @@ import { QuickActions } from '../../components/financial/Dashboard/QuickActions'
 import { LoadingSpinner, SkeletonDashboard } from '../../components/ui/LoadingSpinner'
 import { MetricGrid } from '../../components/financial/Dashboard/MetricCard'
 import { FinancialHealthCard } from '../../components/financial/Dashboard/FinancialHealthCard'
+import { EnhancedDashboard } from '../../components/financial/Dashboard/EnhancedDashboard'
 import { useToasts } from '../../components/ui/toast'
 import { ToastContainer } from '../../components/ui/toast'
 
@@ -185,10 +190,10 @@ export function FinancialManagementPage() {
       expenses: 'Despesas',
       accounts: 'Contas Bancárias',
       debts: 'Dívidas',
+      goals: 'Metas Financeiras',
       projections: 'Projeções',
-      budget: 'Orçamentos',
       reports: 'Relatórios',
-      goals: 'Metas',
+      budget: 'Orçamentos',
       settings: 'Configurações',
       profile: 'Perfil'
     }
@@ -204,103 +209,12 @@ export function FinancialManagementPage() {
     switch (activeTab) {
       case 'dashboard':
         return (
-          <div className="space-y-8 animate-fade-in">
-            {/* Métricas principais */}
-            <MetricGrid 
-              financialData={metricsData}
+          <div className="animate-fade-in">
+            <EnhancedDashboard 
               showBalances={showBalances}
-              onToggleBalances={() => setShowBalances(!showBalances)}
-              onMetricClick={(metricType) => {
-                // Navegar para seção relevante quando clicar na métrica
-                const sectionMap: Record<string, string> = {
-                  'Patrimônio Líquido': 'accounts',
-                  'Receitas Mensais': 'income',
-                  'Despesas Mensais': 'expenses',
-                  'Poupança Mensal': 'dashboard'
-                }
-                const targetSection = sectionMap[metricType]
-                if (targetSection && targetSection !== activeTab) {
-                  handleSectionChange(targetSection)
-                  QuickFeedback.show(`Navegou para ${getSectionName(targetSection)}`, 'info')
-                }
-              }}
+              financialData={financialData}
+              calculatedValues={calculatedValues}
             />
-
-            {/* Saúde financeira */}
-            <FinancialHealthCard 
-              healthData={calculatedValues.financialHealth}
-              showValues={showBalances}
-            />
-
-            {/* Grid de conteúdo */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Ações rápidas melhoradas */}
-              <QuickActions 
-                onNavigate={handleSectionChange}
-                financialData={quickActionsData}
-              />
-
-              {/* Resumo inteligente */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Inteligente</h3>
-                
-                <div className="space-y-4">
-                  {/* Insights automáticos */}
-                  {calculatedValues.monthlyExpenses > calculatedValues.monthlyIncome && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800">
-                        ⚠️ Gastos excedem receitas em €{(calculatedValues.monthlyExpenses - calculatedValues.monthlyIncome).toFixed(2)}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {calculatedValues.monthlySavings > 500 && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800">
-                        🎉 Excelente! Está a poupar €{calculatedValues.monthlySavings.toFixed(2)} por mês
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Dados rápidos */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-gray-900">{financialData.accounts.length}</p>
-                      <p className="text-xs text-gray-600">Contas</p>
-                    </div>
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-gray-900">{financialData.incomes.length}</p>
-                      <p className="text-xs text-gray-600">Fontes de renda</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Última atualização */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    Atualizado há poucos minutos
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Sugestões inteligentes */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
-              <div className="flex items-start space-x-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <span className="text-2xl">💡</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-2">Sugestão Personalizada</h3>
-                  <p className="text-gray-700 text-sm leading-relaxed">
-                    {calculatedValues.monthlySavings > 0 
-                      ? `Com uma poupança de €${calculatedValues.monthlySavings.toFixed(2)}/mês, pode criar um fundo de emergência de €${(calculatedValues.monthlySavings * 6).toFixed(2)} em 6 meses.`
-                      : 'Comece definindo um orçamento para cada categoria de despesa. Isto pode ajudar a identificar onde pode economizar.'
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         )
 
@@ -315,6 +229,38 @@ export function FinancialManagementPage() {
       case 'expenses':
         return (
           <ExpenseSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      case 'accounts':
+        return (
+          <AccountSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      case 'debts':
+        return (
+          <DebtSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      case 'reports':
+        return (
+          <ReportsSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      case 'goals':
+        return (
+          <GoalsSection 
             showBalances={showBalances} 
             onToggleBalances={() => setShowBalances(!showBalances)}
           />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { 
   Home, CreditCard, TrendingUp, TrendingDown, Calculator, BarChart3,
-  User, Settings, LogOut, Menu, Search, ChevronRight, Eye, EyeOff, Wallet
+  User, Settings, LogOut, Menu, Search, ChevronRight, Eye, EyeOff, Wallet,
+  Target, FileText, Building2
 } from 'lucide-react'
 
 interface SidebarItemProps {
@@ -143,21 +144,13 @@ export const EnhancedSidebar: React.FC<EnhancedSidebarProps> = ({
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { 
-      id: 'contas', 
-      label: 'Contas', 
-      icon: CreditCard, 
-      hasSubmenu: true,
-      subItems: [
-        { id: 'accounts', label: 'Contas Bancárias', badge: financialSummary ? '3' : undefined },
-        { id: 'cartoes', label: 'Cartões de Crédito' },
-        { id: 'investimentos', label: 'Investimentos' }
-      ]
-    },
+    { id: 'accounts', label: 'Contas Bancárias', icon: Building2, badge: '4' },
     { id: 'income', label: 'Rendimentos', icon: TrendingUp, badge: '2' },
     { id: 'expenses', label: 'Despesas', icon: TrendingDown, badge: '5' },
     { id: 'debts', label: 'Dívidas', icon: Calculator, badge: '1' },
+    { id: 'goals', label: 'Metas Financeiras', icon: Target, badge: '5' },
     { id: 'projections', label: 'Projeções', icon: BarChart3 },
+    { id: 'reports', label: 'Relatórios', icon: FileText },
   ]
 
   const toggleSubmenu = (menuId: string) => {
