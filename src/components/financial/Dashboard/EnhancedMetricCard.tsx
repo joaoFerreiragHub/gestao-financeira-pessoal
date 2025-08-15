@@ -1,4 +1,4 @@
-// src/components/financial/Dashboard/MetricCard.tsx - Versão Corrigida
+// src/components/financial/Dashboard/EnhancedMetricCard.tsx
 
 import { useState } from 'react'
 import { Eye, EyeOff, TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react'
@@ -25,7 +25,7 @@ function TrendIndicator({ trend, value }: TrendIndicatorProps) {
   )
 }
 
-interface MetricCardProps {
+interface EnhancedMetricCardProps {
   title: string
   value: number
   previousValue?: number
@@ -37,7 +37,7 @@ interface MetricCardProps {
   loading?: boolean
 }
 
-export function MetricCard({
+export function EnhancedMetricCard({
   title,
   value,
   previousValue,
@@ -47,7 +47,7 @@ export function MetricCard({
   showValue,
   onClick,
   loading = false
-}: MetricCardProps) {
+}: EnhancedMetricCardProps) {
   const [isHovered, setIsHovered] = useState(false)
 
   const formatValue = (val: number) => {
@@ -97,17 +97,17 @@ export function MetricCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`
-        group bg-white rounded-xl border border-gray-200 p-4 shadow-sm
+        group bg-white rounded-xl border border-gray-200 p-6 shadow-sm
         transition-all duration-200 text-left w-full
         ${onClick ? 'hover:border-blue-300 hover:shadow-lg cursor-pointer active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/20' : ''}
         ${loading ? 'animate-pulse' : ''}
       `}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
           <div className={`p-2 rounded-lg transition-colors ${getColorClasses(color)}`}>
-            <Icon className="h-4 w-4" />
+            <Icon className="h-5 w-5" />
           </div>
           <span className="text-sm font-medium text-gray-700">{title}</span>
         </div>
@@ -118,21 +118,21 @@ export function MetricCard({
       </div>
 
       {/* Valor principal */}
-      <div className="space-y-1">
-        <p className={`text-2xl font-bold transition-colors ${
+      <div className="space-y-2">
+        <p className={`text-3xl font-bold transition-colors ${
           onClick ? 'text-gray-900 group-hover:text-blue-700' : 'text-gray-900'
         }`}>
           {showValue ? formatValue(value) : '€•••••'}
         </p>
         
         {previousValue && showValue && (
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             vs. anterior: {formatValue(previousValue)}
           </p>
         )}
         
         {!previousValue && (
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             Atualizado há 5 min
           </p>
         )}
@@ -140,11 +140,11 @@ export function MetricCard({
 
       {/* Hover hint para cards clicáveis */}
       {onClick && (
-        <div className={`mt-3 transition-opacity duration-200 ${
+        <div className={`mt-4 transition-opacity duration-200 ${
           isHovered ? 'opacity-100' : 'opacity-0'
         }`}>
           <span className="text-xs text-blue-600 font-medium">
-            Clique para detalhes →
+            Clique para ver detalhes →
           </span>
         </div>
       )}
@@ -152,8 +152,8 @@ export function MetricCard({
   )
 }
 
-// Grid de métricas com onMetricClick
-interface MetricGridProps {
+// Grid de métricas melhorado
+interface EnhancedMetricGridProps {
   financialData: {
     totalBalance: number
     monthlyIncome: number
@@ -163,17 +163,17 @@ interface MetricGridProps {
   }
   showBalances: boolean
   onToggleBalances: () => void
-  onMetricClick?: (metricType: string) => void // ADICIONADO
+  onMetricClick?: (metricType: string) => void
   loading?: boolean
 }
 
-export function MetricGrid({ 
+export function EnhancedMetricGrid({ 
   financialData, 
   showBalances, 
   onToggleBalances, 
-  onMetricClick, // ADICIONADO
+  onMetricClick,
   loading = false 
-}: MetricGridProps) {
+}: EnhancedMetricGridProps) {
   const metrics = [
     {
       title: 'Patrimônio Líquido',
@@ -236,11 +236,11 @@ export function MetricGrid({
       {/* Grid responsivo - 2 colunas no mobile, 4 no desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric, index) => (
-          <MetricCard
+          <EnhancedMetricCard
             key={metric.title}
             {...metric}
             showValue={showBalances}
-            onClick={onMetricClick ? () => onMetricClick(metric.title) : undefined} // CORRIGIDO
+            onClick={onMetricClick ? () => onMetricClick(metric.title) : undefined}
             loading={loading}
           />
         ))}

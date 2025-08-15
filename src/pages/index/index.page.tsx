@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Bell, Plus } from 'lucide-react'
+import { Bell, Plus, Menu } from 'lucide-react'
 
 // Componentes melhorados
 import { EnhancedSidebar } from '../../components/layout/EnhancedSidebar'
-
-
-
-
+import { QuickActionButton } from '../../components/layout/QuickActionButton'
+import { NotificationBell } from '../../components/layout/NotificationBell'
+import { QuickFeedback } from '../../components/ui/QuickFeedback'
 
 // Componentes existentes
 import { IncomeSection } from '../../components/financial/income/IncomeSection'
@@ -31,21 +30,30 @@ import {
   calculateNetWorth,
   calculateFinancialHealth
 } from '../../types/financial'
-import { QuickActions } from '../../components/layout/dashboard/QuickActions'
-import { LoadingSpinner, SkeletonDashboard } from '../../components/financial/Common/LoadingSpinner'
-import { MetricGrid } from '../../components/layout/dashboard/metricCard'
+import { QuickActions } from '../../components/financial/Dashboard/QuickActions'
+import { LoadingSpinner, SkeletonDashboard } from '../../components/ui/LoadingSpinner'
+import { MetricGrid } from '../../components/financial/Dashboard/MetricCard'
 import { FinancialHealthCard } from '../../components/financial/Dashboard/FinancialHealthCard'
 import { useToasts } from '../../components/ui/toast'
+import { ToastContainer } from '../../components/ui/toast'
 
 export function FinancialManagementPage() {
   // ===== ESTADOS PRINCIPAIS =====
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showBalances, setShowBalances] = useState(true)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  
+  // Sidebar persistente
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebar-collapsed') === 'true'
+    }
+    return false
+  })
+  
   const [isLoading, setIsLoading] = useState(true)
   const [dashboardLoading, setDashboardLoading] = useState(false)
 
-  // Toast notifications
+  // Toast notifications e quick feedback
   const { toasts, addToast, removeToast } = useToasts()
 
   // ===== DADOS FINANCEIROS =====
@@ -124,48 +132,39 @@ export function FinancialManagementPage() {
   }), [financialData])
 
   // ===== EFEITOS =====
-  // Simulação de carregamento inicial
+  // Simulação de carregamento inicial otimizada
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false)
-      addToast({
-        type: 'success',
-        title: 'Bem-vindo!',
-        message: 'Dados carregados com sucesso.'
-      })
-    }, 1500) // Reduzido de 2000ms para 1500ms
+      // Quick feedback em vez de toast pesado
+      QuickFeedback.show('Pronto!', 'success')
+    }, 800) // Reduzido de 1500ms para 800ms
 
     return () => clearTimeout(timer)
-  }, [addToast])
+  }, [])
+
+  // Persistir estado da sidebar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar-collapsed', sidebarCollapsed.toString())
+    }
+  }, [sidebarCollapsed])
 
   // ===== HANDLERS =====
   const handleSectionChange = (section: string) => {
     if (section !== activeTab) {
-      setDashboardLoading(true)
       setActiveTab(section)
-      
-      // Simular carregamento de seção (otimizado)
-      setTimeout(() => {
-        setDashboardLoading(false)
-        addToast({
-          type: 'info',
-          title: 'Seção carregada',
-          message: `Navegou para ${getSectionName(section)}`
-        })
-      }, 300) // Reduzido de 500ms para 300ms
+      // Loading instantâneo sem toast desnecessário
+      // Usar breadcrumb visual em vez de notificação
     }
   }
 
   const handleLogout = () => {
-    addToast({
-      type: 'info',
-      title: 'Logout',
-      message: 'Sessão terminada com sucesso'
-    })
+    QuickFeedback.show('Sessão terminada', 'info')
     // Implementar lógica de logout
   }
 
-  const handleNewRecord = () => {
+  const handleQuickAction = () => {
     const actions: Record<string, string> = {
       'dashboard': 'income',
       'income': 'income',
@@ -196,23 +195,6 @@ export function FinancialManagementPage() {
     return names[section] || section
   }
 
-  const getPageDescription = (tab: string): string => {
-    const descriptions: Record<string, string> = {
-      dashboard: 'Visão geral completa das suas finanças pessoais',
-      income: 'Gerencie e acompanhe todas as suas fontes de rendimento',
-      expenses: 'Controle seus gastos por categoria e analise padrões',
-      accounts: 'Administre suas contas bancárias e saldos',
-      debts: 'Monitore e organize seus empréstimos e financiamentos',
-      projections: 'Visualize projeções futuras baseadas nos dados atuais',
-      budget: 'Defina e acompanhe orçamentos por categoria',
-      reports: 'Relatórios detalhados e análises avançadas',
-      goals: 'Defina e acompanhe suas metas financeiras',
-      settings: 'Configurações da aplicação e preferências',
-      profile: 'Informações do perfil e dados pessoais'
-    }
-    return descriptions[tab] || 'Gerencie suas finanças de forma inteligente'
-  }
-
   // ===== RENDERIZAÇÃO DE SEÇÕES =====
   const renderActiveSection = () => {
     if (dashboardLoading) {
@@ -228,9 +210,23 @@ export function FinancialManagementPage() {
               financialData={metricsData}
               showBalances={showBalances}
               onToggleBalances={() => setShowBalances(!showBalances)}
+              onMetricClick={(metricType) => {
+                // Navegar para seção relevante quando clicar na métrica
+                const sectionMap: Record<string, string> = {
+                  'Patrimônio Líquido': 'accounts',
+                  'Receitas Mensais': 'income',
+                  'Despesas Mensais': 'expenses',
+                  'Poupança Mensal': 'dashboard'
+                }
+                const targetSection = sectionMap[metricType]
+                if (targetSection && targetSection !== activeTab) {
+                  handleSectionChange(targetSection)
+                  QuickFeedback.show(`Navegou para ${getSectionName(targetSection)}`, 'info')
+                }
+              }}
             />
 
-            {/* Saúde financeira - PROPS CORRIGIDAS */}
+            {/* Saúde financeira */}
             <FinancialHealthCard 
               healthData={calculatedValues.financialHealth}
               showValues={showBalances}
@@ -238,59 +234,68 @@ export function FinancialManagementPage() {
 
             {/* Grid de conteúdo */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Ações rápidas */}
+              {/* Ações rápidas melhoradas */}
               <QuickActions 
                 onNavigate={handleSectionChange}
                 financialData={quickActionsData}
               />
 
-              {/* Visão geral */}
+              {/* Resumo inteligente */}
               <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Geral</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Inteligente</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Contas bancárias:</span>
-                    <span className="font-medium text-gray-900">{financialData.accounts.length}</span>
-                  </div>
+                  {/* Insights automáticos */}
+                  {calculatedValues.monthlyExpenses > calculatedValues.monthlyIncome && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">
+                        ⚠️ Gastos excedem receitas em €{(calculatedValues.monthlyExpenses - calculatedValues.monthlyIncome).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                   
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Fontes de renda:</span>
-                    <span className="font-medium text-gray-900">{financialData.incomes.length}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Categorias de despesas:</span>
-                    <span className="font-medium text-gray-900">{financialData.expenses.length}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Dívidas ativas:</span>
-                    <span className="font-medium text-gray-900">{financialData.debts.length}</span>
+                  {calculatedValues.monthlySavings > 500 && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        🎉 Excelente! Está a poupar €{calculatedValues.monthlySavings.toFixed(2)} por mês
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Dados rápidos */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-900">{financialData.accounts.length}</p>
+                      <p className="text-xs text-gray-600">Contas</p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-900">{financialData.incomes.length}</p>
+                      <p className="text-xs text-gray-600">Fontes de renda</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Última atualização */}
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <p className="text-xs text-gray-500">
-                    Última atualização: {new Date().toLocaleString('pt-PT')}
+                    Atualizado há poucos minutos
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Dica do dia */}
+            {/* Sugestões inteligentes */}
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
               <div className="flex items-start space-x-4">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <span className="text-2xl">💡</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-2">Dica Financeira do Dia</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Sugestão Personalizada</h3>
                   <p className="text-gray-700 text-sm leading-relaxed">
                     {calculatedValues.monthlySavings > 0 
-                      ? `Parabéns! Está a poupar €${calculatedValues.monthlySavings.toFixed(2)} por mês. Considere automatizar uma transferência para uma conta poupança logo após receber o salário.`
-                      : 'Está a gastar mais do que ganha. Revise suas despesas e identifique onde pode cortar gastos desnecessários.'
+                      ? `Com uma poupança de €${calculatedValues.monthlySavings.toFixed(2)}/mês, pode criar um fundo de emergência de €${(calculatedValues.monthlySavings * 6).toFixed(2)} em 6 meses.`
+                      : 'Comece definindo um orçamento para cada categoria de despesa. Isto pode ajudar a identificar onde pode economizar.'
                     }
                   </p>
                 </div>
@@ -335,11 +340,7 @@ export function FinancialManagementPage() {
                 Voltar ao Dashboard
               </button>
               <button
-                onClick={() => addToast({
-                  type: 'info',
-                  title: 'Funcionalidade solicitada',
-                  message: 'Obrigado pelo interesse! Será notificado quando estiver disponível.'
-                })}
+                onClick={() => QuickFeedback.show('Solicitação registada!', 'info')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Plus className="h-4 w-4 mr-2 inline" />
@@ -359,7 +360,7 @@ export function FinancialManagementPage() {
   // ===== RENDER PRINCIPAL =====
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar melhorada */}
+      {/* Sidebar melhorada e compacta */}
       <EnhancedSidebar
         user={user}
         financialSummary={financialSummary}
@@ -370,42 +371,43 @@ export function FinancialManagementPage() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
+      {/* Mobile overlay para sidebar */}
+      {!sidebarCollapsed && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col">
-        {/* Header melhorado */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
+        {/* Header melhorado e mais clean */}
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 px-6 py-3 sticky top-0 z-40">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {getSectionName(activeTab)}
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {getPageDescription(activeTab)}
-              </p>
-            </div>
-            
             <div className="flex items-center space-x-4">
-              {/* Notificações */}
-              <button 
-                onClick={() => addToast({
-                  type: 'info',
-                  title: 'Notificações',
-                  message: 'Sem notificações pendentes'
-                })}
-                className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              {/* Botão mobile menu */}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full bg-red-400 ring-2 ring-white"></span>
+                <Menu className="h-5 w-5" />
               </button>
               
-              {/* Novo registro */}
-              <button 
-                onClick={handleNewRecord}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Novo Registro</span>
-              </button>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {getSectionName(activeTab)}
+                </h2>
+                {/* Removida a descrição para interface mais clean */}
+              </div>
+            </div>
+            
+            {/* Ações contextuais */}
+            <div className="flex items-center space-x-3">
+              <NotificationBell count={3} />
+              <QuickActionButton 
+                activeSection={activeTab} 
+                onAction={handleQuickAction}
+              />
             </div>
           </div>
         </header>
@@ -416,8 +418,11 @@ export function FinancialManagementPage() {
         </main>
       </div>
 
-      {/* Sistema de notificações */}
+      {/* Sistema de notificações - apenas para importantes */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+      
+      {/* Quick feedback overlay */}
+      <QuickFeedback />
     </div>
   )
 }
