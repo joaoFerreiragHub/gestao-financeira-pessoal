@@ -11,7 +11,7 @@ interface FinancialHealthData {
 
 interface FinancialHealthCardProps {
   healthData: FinancialHealthData
-  showValues?: boolean  // ✅ ADICIONADO showValues como opcional
+  showValues?: boolean
 }
 
 interface HealthMetricProps {

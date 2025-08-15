@@ -1,602 +1,423 @@
-import { useState } from 'react'
-import { 
-  Download, Upload, Trash2, BarChart3, Wallet, TrendingUp, TrendingDown, 
- PiggyBank, Eye, EyeOff, Menu, Home, CreditCard, Calculator,
-  User, LogOut, Settings, Bell, Search, ChevronRight, Plus
-} from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Bell, Plus } from 'lucide-react'
+
+// Componentes melhorados
+import { EnhancedSidebar } from '../../components/layout/EnhancedSidebar'
+
+
+
+
+
+// Componentes existentes
 import { IncomeSection } from '../../components/financial/income/IncomeSection'
 import { ExpenseSection } from '../../components/financial/expenses/ExpenseSection'
 
-// Tipos básicos (mantidos do original)
-interface Account {
-  id: string
-  name: string
-  balance: number
-  type: 'checking' | 'savings' | 'investment'
-}
+// Tipos consolidados
+import type {
+  FinancialState,
+  User,
+  FinancialSummary,
+  MetricsData,
+  QuickActionsData,
+} from '../../types/financial'
 
-interface Income {
-  id: string
-  description: string
-  amount: number
-  frequency: 'monthly' | 'yearly'
-}
-
-interface Expense {
-  id: string
-  category: string
-  description: string
-  amount: number
-  frequency: 'monthly' | 'yearly'
-}
-
-interface Debt {
-  id: string
-  description: string
-  amount: number
-  interestRate: number
-  monthlyPayment: number
-}
-
-interface FinancialState {
-  accounts: Account[]
-  incomes: Income[]
-  expenses: Expense[]
-  debts: Debt[]
-}
-
-interface FinancialHealthData {
-  score: number
-  status: string
-  savingsRate: number
-  debtToAssetRatio: number
-  emergencyFundMonths: number
-}
-
-// Componente da Sidebar
-interface SidebarItemProps {
-  icon: React.ElementType
-  label: string
-  isActive?: boolean
-  onClick?: () => void
-  hasSubmenu?: boolean
-  isExpanded?: boolean
-  children?: React.ReactNode
-  collapsed?: boolean
-}
-
-const SidebarItem: React.FC<SidebarItemProps> = ({ 
-  icon: Icon, 
-  label, 
-  isActive = false, 
-  onClick, 
-  hasSubmenu = false, 
-  isExpanded = false, 
-  children,
-  collapsed = false
-}) => {
-  return (
-    <div className="relative">
-      <button
-        onClick={onClick}
-        className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group ${
-          isActive 
-            ? 'bg-blue-600 text-white shadow-lg' 
-            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-        } ${collapsed ? 'justify-center px-2' : ''}`}
-      >
-        <div className={`flex items-center ${collapsed ? '' : 'space-x-3'}`}>
-          <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
-          {!collapsed && <span className="truncate">{label}</span>}
-        </div>
-        {hasSubmenu && !collapsed && (
-          <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-            <ChevronRight className="h-4 w-4" />
-          </div>
-        )}
-      </button>
-      
-      {hasSubmenu && isExpanded && !collapsed && (
-        <div className="mt-1 ml-8 space-y-1">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const SubMenuItem: React.FC<{ label: string; isActive?: boolean; onClick?: () => void }> = ({ 
-  label, 
-  isActive = false, 
-  onClick 
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-        isActive 
-          ? 'bg-blue-50 text-blue-700 font-medium' 
-          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
+// Utilitários de cálculo
+import {
+  calculateTotalBalance,
+  calculateMonthlyIncome,
+  calculateMonthlyExpenses,
+  calculateTotalDebt,
+  calculateMonthlySavings,
+  calculateNetWorth,
+  calculateFinancialHealth
+} from '../../types/financial'
+import { QuickActions } from '../../components/layout/dashboard/QuickActions'
+import { LoadingSpinner, SkeletonDashboard } from '../../components/financial/Common/LoadingSpinner'
+import { MetricGrid } from '../../components/layout/dashboard/metricCard'
+import { FinancialHealthCard } from '../../components/financial/Dashboard/FinancialHealthCard'
+import { useToasts } from '../../components/ui/toast'
 
 export function FinancialManagementPage() {
-  // Estados originais
+  // ===== ESTADOS PRINCIPAIS =====
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showBalances, setShowBalances] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+
+  // Toast notifications
+  const { toasts, addToast, removeToast } = useToasts()
+
+  // ===== DADOS FINANCEIROS =====
   const [financialData, setFinancialData] = useState<FinancialState>({
-    accounts: [],
-    incomes: [],
-    expenses: [],
-    debts: []
+    accounts: [
+      { id: '1', name: 'Conta Corrente', balance: 2500.50, type: 'checking' },
+      { id: '2', name: 'Conta Poupança', balance: 15000.00, type: 'savings' },
+      { id: '3', name: 'Investimentos', balance: 8500.75, type: 'investment' }
+    ],
+    incomes: [
+      { id: '1', description: 'Salário Principal', amount: 2800, frequency: 'monthly' },
+      { id: '2', description: 'Freelance', amount: 500, frequency: 'monthly' }
+    ],
+    expenses: [
+      { id: '1', category: 'Habitação', description: 'Renda', amount: 650, frequency: 'monthly' },
+      { id: '2', category: 'Alimentação', description: 'Supermercado', amount: 400, frequency: 'monthly' },
+      { id: '3', category: 'Transporte', description: 'Combustível', amount: 200, frequency: 'monthly' },
+      { id: '4', category: 'Entretenimento', description: 'Streaming', amount: 50, frequency: 'monthly' },
+      { id: '5', category: 'Utilidades', description: 'Eletricidade', amount: 80, frequency: 'monthly' }
+    ],
+    debts: [
+      { id: '1', description: 'Crédito Habitação', amount: 85000, interestRate: 3.5, monthlyPayment: 420 }
+    ]
   })
 
-  // Novos estados para sidebar
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [expandedMenus, setExpandedMenus] = useState(['contas'])
-  const [searchQuery, setSearchQuery] = useState('')
-
-  // Mock user data
-  const user = {
+  // ===== DADOS DO UTILIZADOR =====
+  const user: User = {
     name: 'João Silva',
     email: 'joao.silva@email.com',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face&auto=format',
     plan: 'Premium'
   }
 
-  // Cálculos originais (mantidos)
-  const totalBalance = financialData.accounts.reduce((sum, account) => sum + account.balance, 0)
-  const monthlyIncome = financialData.incomes.reduce((sum, income) => 
-    sum + (income.frequency === 'monthly' ? income.amount : income.amount / 12), 0)
-  const monthlyExpenses = financialData.expenses.reduce((sum, expense) => 
-    sum + (expense.frequency === 'monthly' ? expense.amount : expense.amount / 12), 0)
-  const totalDebt = financialData.debts.reduce((sum, debt) => sum + debt.amount, 0)
-  const monthlySavings = monthlyIncome - monthlyExpenses
-  const netWorth = totalBalance - totalDebt
+  // ===== CÁLCULOS MEMOIZADOS (OTIMIZAÇÃO) =====
+  const calculatedValues = useMemo(() => {
+    const totalBalance = calculateTotalBalance(financialData.accounts)
+    const monthlyIncome = calculateMonthlyIncome(financialData.incomes)
+    const monthlyExpenses = calculateMonthlyExpenses(financialData.expenses)
+    const totalDebt = calculateTotalDebt(financialData.debts)
+    const monthlySavings = calculateMonthlySavings(financialData)
+    const netWorth = calculateNetWorth(financialData)
+    const financialHealth = calculateFinancialHealth(financialData)
 
-  // Mock da saúde financeira (mantido)
-  const financialHealth: FinancialHealthData = {
-    score: 72,
-    status: 'Boa',
-    savingsRate: monthlyIncome > 0 ? (monthlySavings / monthlyIncome * 100) : 0,
-    debtToAssetRatio: totalBalance > 0 ? (totalDebt / totalBalance * 100) : 0,
-    emergencyFundMonths: monthlyExpenses > 0 ? (totalBalance / monthlyExpenses) : 0
-  }
+    return {
+      totalBalance,
+      monthlyIncome,
+      monthlyExpenses,
+      totalDebt,
+      monthlySavings,
+      netWorth,
+      financialHealth
+    }
+  }, [financialData])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-PT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
-  }
+  // ===== DADOS PARA COMPONENTES =====
+  const financialSummary: FinancialSummary = useMemo(() => ({
+    totalBalance: calculatedValues.totalBalance,
+    monthlyIncome: calculatedValues.monthlyIncome,
+    monthlyExpenses: calculatedValues.monthlyExpenses,
+    netWorth: calculatedValues.netWorth
+  }), [calculatedValues])
 
-  // Menu items para sidebar
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { 
-      id: 'contas', 
-      label: 'Contas', 
-      icon: CreditCard, 
-      hasSubmenu: true,
-      subItems: [
-        { id: 'accounts', label: 'Contas Bancárias' },
-        { id: 'cartoes', label: 'Cartões' },
-        { id: 'investimentos', label: 'Investimentos' }
-      ]
-    },
-    { id: 'income', label: 'Rendimentos', icon: TrendingUp },
-    { id: 'expenses', label: 'Despesas', icon: TrendingDown },
-    { id: 'debts', label: 'Dívidas', icon: Calculator },
-    { id: 'projections', label: 'Projeções', icon: BarChart3 },
-  ]
+  const metricsData: MetricsData = useMemo(() => ({
+    totalBalance: calculatedValues.totalBalance,
+    monthlyIncome: calculatedValues.monthlyIncome,
+    monthlyExpenses: calculatedValues.monthlyExpenses,
+    netWorth: calculatedValues.netWorth,
+    monthlySavings: calculatedValues.monthlySavings
+  }), [calculatedValues])
 
-  const toggleSubmenu = (menuId: string) => {
-    setExpandedMenus(prev => 
-      prev.includes(menuId) 
-        ? prev.filter(id => id !== menuId)
-        : [...prev, menuId]
-    )
-  }
+  const quickActionsData: QuickActionsData = useMemo(() => ({
+    accountsCount: financialData.accounts.length,
+    incomesCount: financialData.incomes.length,
+    expensesCount: financialData.expenses.length,
+    debtsCount: financialData.debts.length
+  }), [financialData])
 
-  const handleMenuClick = (itemId: string, hasSubmenu: boolean = false) => {
-    if (hasSubmenu) {
-      toggleSubmenu(itemId)
-    } else {
-      setActiveTab(itemId)
+  // ===== EFEITOS =====
+  // Simulação de carregamento inicial
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+      addToast({
+        type: 'success',
+        title: 'Bem-vindo!',
+        message: 'Dados carregados com sucesso.'
+      })
+    }, 1500) // Reduzido de 2000ms para 1500ms
+
+    return () => clearTimeout(timer)
+  }, [addToast])
+
+  // ===== HANDLERS =====
+  const handleSectionChange = (section: string) => {
+    if (section !== activeTab) {
+      setDashboardLoading(true)
+      setActiveTab(section)
+      
+      // Simular carregamento de seção (otimizado)
+      setTimeout(() => {
+        setDashboardLoading(false)
+        addToast({
+          type: 'info',
+          title: 'Seção carregada',
+          message: `Navegou para ${getSectionName(section)}`
+        })
+      }, 300) // Reduzido de 500ms para 300ms
     }
   }
 
+  const handleLogout = () => {
+    addToast({
+      type: 'info',
+      title: 'Logout',
+      message: 'Sessão terminada com sucesso'
+    })
+    // Implementar lógica de logout
+  }
+
+  const handleNewRecord = () => {
+    const actions: Record<string, string> = {
+      'dashboard': 'income',
+      'income': 'income',
+      'expenses': 'expenses',
+      'accounts': 'accounts',
+      'debts': 'debts'
+    }
+    
+    const targetSection = actions[activeTab] || 'income'
+    handleSectionChange(targetSection)
+  }
+
+  // ===== UTILITÁRIOS =====
+  const getSectionName = (section: string): string => {
+    const names: Record<string, string> = {
+      dashboard: 'Dashboard',
+      income: 'Rendimentos',
+      expenses: 'Despesas',
+      accounts: 'Contas Bancárias',
+      debts: 'Dívidas',
+      projections: 'Projeções',
+      budget: 'Orçamentos',
+      reports: 'Relatórios',
+      goals: 'Metas',
+      settings: 'Configurações',
+      profile: 'Perfil'
+    }
+    return names[section] || section
+  }
+
+  const getPageDescription = (tab: string): string => {
+    const descriptions: Record<string, string> = {
+      dashboard: 'Visão geral completa das suas finanças pessoais',
+      income: 'Gerencie e acompanhe todas as suas fontes de rendimento',
+      expenses: 'Controle seus gastos por categoria e analise padrões',
+      accounts: 'Administre suas contas bancárias e saldos',
+      debts: 'Monitore e organize seus empréstimos e financiamentos',
+      projections: 'Visualize projeções futuras baseadas nos dados atuais',
+      budget: 'Defina e acompanhe orçamentos por categoria',
+      reports: 'Relatórios detalhados e análises avançadas',
+      goals: 'Defina e acompanhe suas metas financeiras',
+      settings: 'Configurações da aplicação e preferências',
+      profile: 'Informações do perfil e dados pessoais'
+    }
+    return descriptions[tab] || 'Gerencie suas finanças de forma inteligente'
+  }
+
+  // ===== RENDERIZAÇÃO DE SEÇÕES =====
+  const renderActiveSection = () => {
+    if (dashboardLoading) {
+      return <SkeletonDashboard />
+    }
+
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <div className="space-y-8 animate-fade-in">
+            {/* Métricas principais */}
+            <MetricGrid 
+              financialData={metricsData}
+              showBalances={showBalances}
+              onToggleBalances={() => setShowBalances(!showBalances)}
+            />
+
+            {/* Saúde financeira - PROPS CORRIGIDAS */}
+            <FinancialHealthCard 
+              healthData={calculatedValues.financialHealth}
+              showValues={showBalances}
+            />
+
+            {/* Grid de conteúdo */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Ações rápidas */}
+              <QuickActions 
+                onNavigate={handleSectionChange}
+                financialData={quickActionsData}
+              />
+
+              {/* Visão geral */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Geral</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Contas bancárias:</span>
+                    <span className="font-medium text-gray-900">{financialData.accounts.length}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Fontes de renda:</span>
+                    <span className="font-medium text-gray-900">{financialData.incomes.length}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Categorias de despesas:</span>
+                    <span className="font-medium text-gray-900">{financialData.expenses.length}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Dívidas ativas:</span>
+                    <span className="font-medium text-gray-900">{financialData.debts.length}</span>
+                  </div>
+                </div>
+
+                {/* Última atualização */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    Última atualização: {new Date().toLocaleString('pt-PT')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dica do dia */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
+              <div className="flex items-start space-x-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <span className="text-2xl">💡</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-2">Dica Financeira do Dia</h3>
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    {calculatedValues.monthlySavings > 0 
+                      ? `Parabéns! Está a poupar €${calculatedValues.monthlySavings.toFixed(2)} por mês. Considere automatizar uma transferência para uma conta poupança logo após receber o salário.`
+                      : 'Está a gastar mais do que ganha. Revise suas despesas e identifique onde pode cortar gastos desnecessários.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'income':
+        return (
+          <IncomeSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      case 'expenses':
+        return (
+          <ExpenseSection 
+            showBalances={showBalances} 
+            onToggleBalances={() => setShowBalances(!showBalances)}
+          />
+        )
+
+      default:
+        return (
+          <div className="bg-white p-12 rounded-xl shadow-sm border border-gray-100 text-center animate-fade-in">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🚧</span>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              {getSectionName(activeTab)}
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Esta funcionalidade está em desenvolvimento. Em breve estará disponível com todas as ferramentas necessárias.
+            </p>
+            <div className="flex justify-center space-x-3">
+              <button 
+                onClick={() => handleSectionChange('dashboard')}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Voltar ao Dashboard
+              </button>
+              <button
+                onClick={() => addToast({
+                  type: 'info',
+                  title: 'Funcionalidade solicitada',
+                  message: 'Obrigado pelo interesse! Será notificado quando estiver disponível.'
+                })}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-4 w-4 mr-2 inline" />
+                Solicitar Prioridade
+              </button>
+            </div>
+          </div>
+        )
+    }
+  }
+
+  // ===== LOADING INICIAL =====
+  if (isLoading) {
+    return <LoadingSpinner message="Carregando aplicação financeira..." size="lg" />
+  }
+
+  // ===== RENDER PRINCIPAL =====
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className={`bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${
-        sidebarCollapsed ? 'w-16' : 'w-80'
-      } flex flex-col`}>
-        
-        {/* Header da Sidebar */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && (
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <Wallet className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">FinHub</h1>
-                  <p className="text-xs text-gray-500">Gestão Financeira</p>
-                </div>
-              </div>
-            )}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Menu className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
+      {/* Sidebar melhorada */}
+      <EnhancedSidebar
+        user={user}
+        financialSummary={financialSummary}
+        activeSection={activeTab}
+        onSectionChange={handleSectionChange}
+        onLogout={handleLogout}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
-        {/* Perfil do Usuário */}
-        {!sidebarCollapsed && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3 mb-3">
-              <img 
-                src={user.avatar} 
-                alt="Avatar" 
-                className="w-10 h-10 rounded-full border-2 border-gray-200"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-              </div>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {user.plan}
-              </span>
-            </div>
-            
-            {/* Resumo Rápido */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Patrimônio Líquido</span>
-                <button onClick={() => setShowBalances(!showBalances)}>
-                  {showBalances ? <Eye className="h-4 w-4 text-gray-500" /> : <EyeOff className="h-4 w-4 text-gray-500" />}
-                </button>
-              </div>
-              <p className="text-lg font-bold text-gray-900">
-                {showBalances ? formatCurrency(netWorth) : '•••••'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        {!sidebarCollapsed && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Menu */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {menuItems.map((item) => (
-            <SidebarItem
-              key={item.id}
-              icon={item.icon}
-              label={sidebarCollapsed ? '' : item.label}
-              isActive={activeTab === item.id}
-              hasSubmenu={item.hasSubmenu}
-              isExpanded={expandedMenus.includes(item.id)}
-              collapsed={sidebarCollapsed}
-              onClick={() => handleMenuClick(item.id, item.hasSubmenu)}
-            >
-              {item.subItems?.map((subItem) => (
-                <SubMenuItem
-                  key={subItem.id}
-                  label={subItem.label}
-                  isActive={activeTab === subItem.id}
-                  onClick={() => setActiveTab(subItem.id)}
-                />
-              ))}
-            </SidebarItem>
-          ))}
-        </nav>
-
-        {/* Bottom Actions */}
-        <div className="p-4 border-t border-gray-200 space-y-2">
-          <SidebarItem
-            icon={User}
-            label={sidebarCollapsed ? '' : 'Perfil'}
-            isActive={activeTab === 'profile'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveTab('profile')}
-          />
-          <SidebarItem
-            icon={Settings}
-            label={sidebarCollapsed ? '' : 'Configurações'}
-            isActive={activeTab === 'settings'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveTab('settings')}
-          />
-          <SidebarItem
-            icon={LogOut}
-            label={sidebarCollapsed ? '' : 'Sair'}
-            collapsed={sidebarCollapsed}
-            onClick={() => console.log('Logout')}
-          />
-        </div>
-      </div>
-
-      {/* Main Content */}
+      {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+        {/* Header melhorado */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                {activeTab === 'dashboard' ? 'Dashboard' : 
-                 activeTab === 'accounts' ? 'Contas Bancárias' :
-                 activeTab === 'income' ? 'Rendimentos' :
-                 activeTab === 'expenses' ? 'Despesas' :
-                 activeTab === 'debts' ? 'Dívidas' :
-                 activeTab === 'projections' ? 'Projeções' :
-                 activeTab.replace('-', ' ')}
+              <h2 className="text-2xl font-bold text-gray-900">
+                {getSectionName(activeTab)}
               </h2>
-              <p className="text-sm text-gray-600">Gerencie suas finanças de forma inteligente</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {getPageDescription(activeTab)}
+              </p>
             </div>
+            
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              {/* Notificações */}
+              <button 
+                onClick={() => addToast({
+                  type: 'info',
+                  title: 'Notificações',
+                  message: 'Sem notificações pendentes'
+                })}
+                className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
+                <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full bg-red-400 ring-2 ring-white"></span>
               </button>
-              <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              
+              {/* Novo registro */}
+              <button 
+                onClick={handleNewRecord}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+              >
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Registro
+                <span className="hidden sm:inline">Novo Registro</span>
               </button>
             </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-50/50">
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Cards de Resumo */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-md border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-blue-700">Patrimônio Líquido</h3>
-                    <button
-                      onClick={() => setShowBalances(!showBalances)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      {showBalances ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-700">
-                    {showBalances ? formatCurrency(netWorth) : '€****'}
-                  </div>
-                  <p className="text-xs text-blue-600 mt-1">
-                    Total de ativos menos dívidas
-                  </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-green-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-green-700">Receitas Mensais</h3>
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="text-2xl font-bold text-green-700">
-                    {formatCurrency(monthlyIncome)}
-                  </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    {financialData.incomes.length} fonte(s) de renda
-                  </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-red-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-red-700">Gastos Mensais</h3>
-                    <TrendingDown className="h-4 w-4 text-red-600" />
-                  </div>
-                  <div className="text-2xl font-bold text-red-700">
-                    {formatCurrency(monthlyExpenses)}
-                  </div>
-                  <p className="text-xs text-red-600 mt-1">
-                    {financialData.expenses.length} despesa(s) registrada(s)
-                  </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-purple-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-purple-700">Economia Mensal</h3>
-                    <PiggyBank className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div className={`text-2xl font-bold ${monthlySavings >= 0 ? 'text-purple-700' : 'text-red-700'}`}>
-                    {formatCurrency(monthlySavings)}
-                  </div>
-                  <p className="text-xs text-purple-600 mt-1">
-                    {monthlySavings >= 0 ? 'Poupando' : 'Gastando mais que ganha'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Indicador de Saúde Financeira */}
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">Saúde Financeira</h2>
-                  <div className="text-sm font-medium text-gray-600">
-                    Score: {financialHealth.score}/100
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{financialHealth.status}</p>
-                    <p className="text-sm text-gray-600">Status Geral</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">
-                      {financialHealth.savingsRate.toFixed(1)}%
-                    </p>
-                    <p className="text-sm text-gray-600">Taxa de Poupança</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">
-                      {financialHealth.debtToAssetRatio.toFixed(1)}%
-                    </p>
-                    <p className="text-sm text-gray-600">Endividamento</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-600">
-                      {financialHealth.emergencyFundMonths.toFixed(1)}
-                    </p>
-                    <p className="text-sm text-gray-600">Meses de Reserva</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Visão Geral e Ações Rápidas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                  <h3 className="text-lg font-semibold mb-4">Visão Geral</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Contas bancárias:</span>
-                      <span className="font-medium">{financialData.accounts.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Fontes de renda:</span>
-                      <span className="font-medium">{financialData.incomes.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Despesas mensais:</span>
-                      <span className="font-medium">{financialData.expenses.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Dívidas:</span>
-                      <span className="font-medium">{financialData.debts.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                  <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => setActiveTab('income')} 
-                      className="w-full flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <TrendingUp className="h-4 w-4" />
-                      Adicionar Rendimento
-                    </button>
-                    <button 
-                      onClick={() => setActiveTab('expenses')} 
-                      className="w-full flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <TrendingDown className="h-4 w-4" />
-                      Registar Despesa
-                    </button>
-                    <button 
-                      onClick={() => setActiveTab('accounts')} 
-                      className="w-full flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <Wallet className="h-4 w-4" />
-                      Nova Conta
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ===== SEÇÃO DE RENDIMENTOS - USANDO O COMPONENTE COMPLETO ===== */}
-          {activeTab === 'income' && (
-            <IncomeSection 
-              showBalances={showBalances} 
-              onToggleBalances={() => setShowBalances(!showBalances)}
-            />
-          )}
-
-          {/* ===== SEÇÃO DE DESPESAS - USANDO O COMPONENTE COMPLETO ===== */}
-          {activeTab === 'expenses' && (
-            <ExpenseSection 
-              showBalances={showBalances} 
-              onToggleBalances={() => setShowBalances(!showBalances)}
-            />
-          )}
-
-          {/* Outras seções mantêm o placeholder por enquanto */}
-          {activeTab !== 'dashboard' && activeTab !== 'income' && activeTab !== 'expenses' && (
-            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Seção: {activeTab === 'accounts' ? 'Contas Bancárias' : 
-                         activeTab === 'debts' ? 'Dívidas' :
-                         activeTab === 'projections' ? 'Projeções' :
-                         activeTab.toUpperCase()}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Esta seção está em desenvolvimento. Aqui você encontrará todas as funcionalidades relacionadas a {
-                  activeTab === 'accounts' ? 'contas bancárias' : 
-                  activeTab === 'debts' ? 'dívidas' :
-                  activeTab === 'projections' ? 'projeções' :
-                  activeTab
-                }.
-              </p>
-              <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar {activeTab === 'accounts' ? 'Conta' : 
-                          activeTab === 'debts' ? 'Dívida' :
-                          activeTab === 'projections' ? 'Projeção' :
-                          'Item'}
-              </button>
-            </div>
-          )}
-
-          {/* Gestão de Dados */}
-          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-5 w-5" />
-              <h3 className="text-lg font-semibold">Gestão de Dados</h3>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <Download className="h-4 w-4" />
-                Exportar Dados
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <Upload className="h-4 w-4" />
-                Importar Dados
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                <Trash2 className="h-4 w-4" />
-                Limpar Dados
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              Exporte regularmente seus dados como backup. Os dados são salvos localmente no seu navegador.
-            </p>
-          </div>
+        {/* Área de conteúdo */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          {renderActiveSection()}
         </main>
       </div>
+
+      {/* Sistema de notificações */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

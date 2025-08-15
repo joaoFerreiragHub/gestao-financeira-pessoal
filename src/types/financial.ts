@@ -1,43 +1,135 @@
-// src/utils/calculations.ts
-import type { 
-  Account, 
-  Income, 
-  Expense, 
-  Debt, 
-  FinancialState, 
-  ProjectionData,
-  FinancialHealth 
-} from '../types/pageContext'
+// ===== TIPOS PRINCIPAIS =====
 
-/**
- * Formatação de moeda em EUR
- */
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('pt-PT', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount)
+export interface Account {
+  id: string
+  name: string
+  balance: number
+  type: 'checking' | 'savings' | 'investment'
 }
 
-/**
- * Formatar percentagem
- */
-export const formatPercentage = (value: number, decimals: number = 1): string => {
-  return `${value.toFixed(decimals)}%`
+export interface Income {
+  id: string
+  description: string
+  amount: number
+  frequency: 'monthly' | 'yearly'
 }
 
+export interface Expense {
+  id: string
+  category: string
+  description: string
+  amount: number
+  frequency: 'monthly' | 'yearly'
+}
+
+export interface Debt {
+  id: string
+  description: string
+  amount: number
+  interestRate: number
+  monthlyPayment: number
+}
+
+export interface FinancialState {
+  accounts: Account[]
+  incomes: Income[]
+  expenses: Expense[]
+  debts: Debt[]
+}
+
+export interface FinancialHealthData {
+  score: number
+  status: string
+  savingsRate: number
+  debtToAssetRatio: number
+  emergencyFundMonths: number
+}
+
+// ===== TIPOS PARA COMPONENTES =====
+
+export interface User {
+  name: string
+  email: string
+  avatar: string
+  plan: string
+}
+
+export interface FinancialSummary {
+  totalBalance: number
+  monthlyIncome: number
+  monthlyExpenses: number
+  netWorth: number
+}
+
+export interface MetricsData {
+  totalBalance: number
+  monthlyIncome: number
+  monthlyExpenses: number
+  netWorth: number
+  monthlySavings: number
+}
+
+export interface QuickActionsData {
+  accountsCount: number
+  incomesCount: number
+  expensesCount: number
+  debtsCount: number
+}
+
+// ===== PROPS DOS COMPONENTES =====
+
+export interface FinancialHealthCardProps {
+  healthData: FinancialHealthData
+  showValues?: boolean
+}
+
+export interface MetricGridProps {
+  financialData: MetricsData
+  showBalances: boolean
+  onToggleBalances: () => void
+  loading?: boolean
+}
+
+export interface QuickActionsProps {
+  onNavigate: (section: string) => void
+  financialData?: QuickActionsData
+}
+
+export interface EnhancedSidebarProps {
+  user?: User
+  financialSummary?: FinancialSummary
+  activeSection: string
+  onSectionChange?: (section: string) => void
+  onLogout?: () => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}
+
+// ===== TOAST TYPES =====
+
+export interface Toast {
+  id: string
+  type: 'success' | 'error' | 'warning' | 'info'
+  title: string
+  message: string
+  duration?: number
+}
+
+// ===== UTILITÁRIOS DE CÁLCULO =====
+
 /**
- * Converter valor anual para mensal ou vice-versa
+ * Converter valor para mensal baseado na frequência
  */
 export const calculateMonthlyAmount = (
   amount: number, 
   frequency: 'monthly' | 'yearly'
 ): number => {
-  return frequency === 'yearly' ? amount / 12 : amount
+  return frequency === 'monthly' ? amount : amount / 12
 }
 
+/**
+ * Converter valor para anual baseado na frequência
+ */
 export const calculateYearlyAmount = (
   amount: number, 
   frequency: 'monthly' | 'yearly'
@@ -126,177 +218,57 @@ export const calculateDebtToAssetRatio = (state: FinancialState): number => {
 }
 
 /**
- * Calcular despesas por categoria
+ * Calcular meses de fundo de emergência
  */
-export const calculateExpensesByCategory = (expenses: Expense[]): Record<string, number> => {
-  return expenses.reduce((acc, expense) => {
-    const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency)
-    acc[expense.category] = (acc[expense.category] || 0) + monthlyAmount
-    return acc
-  }, {} as Record<string, number>)
-}
-
-/**
- * Simular pagamento de dívida com juros compostos
- */
-export const simulateDebtPayment = (
-  debt: Debt, 
-  months: number
-): { remainingDebt: number; totalInterestPaid: number; totalPaid: number } => {
-  let remainingPrincipal = debt.amount
-  let totalInterestPaid = 0
-  let totalPaid = 0
-  
-  const monthlyInterestRate = debt.interestRate / 100 / 12
-  
-  for (let month = 0; month < months && remainingPrincipal > 0; month++) {
-    const interestPayment = remainingPrincipal * monthlyInterestRate
-    const principalPayment = Math.min(
-      debt.monthlyPayment - interestPayment, 
-      remainingPrincipal
-    )
-    
-    if (principalPayment <= 0) break // Pagamento não cobre nem os juros
-    
-    remainingPrincipal -= principalPayment
-    totalInterestPaid += interestPayment
-    totalPaid += debt.monthlyPayment
-  }
-  
-  return {
-    remainingDebt: Math.max(0, remainingPrincipal),
-    totalInterestPaid,
-    totalPaid
-  }
-}
-
-/**
- * Gerar projeções financeiras futuras (renomeado para manter compatibilidade)
- */
-export const calculateProjections = (state: FinancialState, years: number = 15): ProjectionData[] => {
-  return generateProjections(state, years)
-}
-
-/**
- * Gerar projeções financeiras futuras
- */
-export const generateProjections = (state: FinancialState, years: number = 15): ProjectionData[] => {
-  const monthlyIncome = calculateMonthlyIncome(state.incomes)
+export const calculateEmergencyFundMonths = (state: FinancialState): number => {
+  const totalBalance = calculateTotalBalance(state.accounts)
   const monthlyExpenses = calculateMonthlyExpenses(state.expenses)
-  const monthlyDebtPayments = calculateMonthlyDebtPayments(state.debts)
-  const monthlySavings = monthlyIncome - monthlyExpenses - monthlyDebtPayments
-
-  const currentNetWorth = calculateNetWorth(state)
-  const currentTotalDebt = calculateTotalDebt(state.debts)
-
-  const projections: ProjectionData[] = []
-
-  for (let year = 1; year <= years; year++) {
-    const months = year * 12
-
-    // Simular redução de dívidas
-    let projectedTotalDebt = 0
-    state.debts.forEach(debt => {
-      const simulation = simulateDebtPayment(debt, months)
-      projectedTotalDebt += simulation.remainingDebt
-    })
-
-    const projectedSavings = monthlySavings * months
-    const projectedNetWorth = currentNetWorth + projectedSavings
-
-    projections.push({
-      year,
-      netWorth: projectedNetWorth,
-      totalDebt: projectedTotalDebt,
-      savings: projectedSavings,
-      initialDebt: currentTotalDebt
-    })
-  }
-
-  return projections
+  
+  if (monthlyExpenses === 0) return 0
+  return totalBalance / monthlyExpenses
 }
 
 /**
- * Calcular tempo estimado para quitar dívidas
+ * Calcular saúde financeira geral
  */
-export const calculateDebtPayoffTime = (debts: Debt[]): number => {
-  if (debts.length === 0) return 0
-  
-  let maxMonths = 0
-  
-  for (const debt of debts) {
-    const monthlyInterestRate = debt.interestRate / 100 / 12
-    
-    if (monthlyInterestRate === 0) {
-      // Sem juros
-      const months = debt.amount / debt.monthlyPayment
-      maxMonths = Math.max(maxMonths, months)
-    } else {
-      // Com juros - fórmula de amortização
-      const monthlyInterest = debt.amount * monthlyInterestRate
-      if (debt.monthlyPayment <= monthlyInterest) {
-        // Pagamento não cobre nem os juros - nunca quita
-        return Infinity
-      }
-      
-      const months = Math.log(1 + (debt.amount * monthlyInterestRate) / 
-        (debt.monthlyPayment - debt.amount * monthlyInterestRate)) / 
-        Math.log(1 + monthlyInterestRate)
-      
-      maxMonths = Math.max(maxMonths, months)
-    }
-  }
-  
-  return Math.ceil(maxMonths)
-}
-
-/**
- * Calcular indicadores de saúde financeira (compatível com interface FinancialHealth)
- */
-export const calculateFinancialHealth = (state: FinancialState): FinancialHealth => {
-  const netWorth = calculateNetWorth(state)
+export const calculateFinancialHealth = (state: FinancialState): FinancialHealthData => {
   const savingsRate = calculateSavingsRate(state)
   const debtToAssetRatio = calculateDebtToAssetRatio(state)
-  const monthlySavings = calculateMonthlySavings(state)
-  const emergencyFund = calculateTotalBalance(state.accounts.filter(a => a.type === 'savings'))
-  const monthlyExpenses = calculateMonthlyExpenses(state.expenses)
-  const emergencyFundMonths = monthlyExpenses > 0 ? emergencyFund / monthlyExpenses : 0
+  const emergencyFundMonths = calculateEmergencyFundMonths(state)
   
-  // Score de saúde financeira (0-100)
-  let healthScore = 0
+  // Cálculo do score (0-100)
+  let score = 0
   
-  // Patrimônio líquido positivo (25 pontos)
-  if (netWorth > 0) healthScore += 25
+  // Taxa de poupança (30 pontos)
+  if (savingsRate >= 20) score += 30
+  else if (savingsRate >= 10) score += 20
+  else if (savingsRate >= 5) score += 10
   
-  // Taxa de poupança boa (25 pontos)
-  if (savingsRate >= 20) healthScore += 25
-  else if (savingsRate >= 10) healthScore += 15
-  else if (savingsRate >= 5) healthScore += 10
-  
-  // Baixo endividamento (25 pontos)
-  if (debtToAssetRatio <= 30) healthScore += 25
-  else if (debtToAssetRatio <= 50) healthScore += 15
-  else if (debtToAssetRatio <= 70) healthScore += 10
+  // Ratio de dívida (25 pontos)
+  if (debtToAssetRatio <= 20) score += 25
+  else if (debtToAssetRatio <= 40) score += 15
+  else if (debtToAssetRatio <= 60) score += 5
   
   // Fundo de emergência (25 pontos)
-  if (emergencyFundMonths >= 6) healthScore += 25
-  else if (emergencyFundMonths >= 3) healthScore += 15
-  else if (emergencyFundMonths >= 1) healthScore += 10
+  if (emergencyFundMonths >= 6) score += 25
+  else if (emergencyFundMonths >= 3) score += 15
+  else if (emergencyFundMonths >= 1) score += 5
   
-  // Determinar nível baseado no score
-  let level: 'poor' | 'fair' | 'good' | 'excellent'
-  if (healthScore >= 80) level = 'excellent'
-  else if (healthScore >= 60) level = 'good'
-  else if (healthScore >= 40) level = 'fair'
-  else level = 'poor'
+  // Rendimento positivo (20 pontos)
+  const monthlySavings = calculateMonthlySavings(state)
+  if (monthlySavings > 0) score += 20
+  else if (monthlySavings >= 0) score += 10
+  
+  // Status baseado no score
+  let status = 'Crítica'
+  if (score >= 80) status = 'Excelente'
+  else if (score >= 60) status = 'Boa'
+  else if (score >= 40) status = 'Razoável'
+  else if (score >= 20) status = 'Atenção'
   
   return {
-    score: healthScore,
-    status:
-      healthScore >= 80 ? 'Excelente' :
-      healthScore >= 60 ? 'Boa' :
-      healthScore >= 40 ? 'Razoável' :
-      'Fraca',
+    score,
+    status,
     savingsRate,
     debtToAssetRatio,
     emergencyFundMonths
