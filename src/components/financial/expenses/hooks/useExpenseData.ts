@@ -1,319 +1,253 @@
-// src/hooks/useExpenseData.ts
-
-import { useState, useEffect } from 'react';
-import { ExpenseCategory, ExpenseEntry, UseExpenseDataReturn } from '../../../../types/expenses';
+// src/components/financial/expenses/hooks/useExpenseData.ts
+import { useState, useEffect, useCallback } from 'react';
+import { 
+  ExpenseCategory, 
+  ExpenseEntry, 
+  ExpenseStats, 
+  UseExpenseDataReturn,
+  DEFAULT_EXPENSE_CATEGORIES 
+} from '../../../types/financial/expenses';
 
 const STORAGE_KEYS = {
   CATEGORIES: 'expense-categories',
   ENTRIES: 'expense-entries'
-} as const;
-
-const generateId = (): string => {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 };
-
-const getCurrentTimestamp = (): string => {
-  return new Date().toISOString();
-};
-
-// Dados iniciais de exemplo
-const getInitialCategories = (): ExpenseCategory[] => [
-  {
-    id: '1',
-    name: 'Alimentação',
-    icon: '🍽️',
-    color: 'orange',
-    budgetLimit: 600,
-    description: 'Supermercado, restaurantes, delivery',
-    isActive: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '2',
-    name: 'Transporte',
-    icon: '🚗',
-    color: 'blue',
-    budgetLimit: 300,
-    description: 'Combustível, transportes públicos, manutenção',
-    isActive: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '3',
-    name: 'Habitação',
-    icon: '🏠',
-    color: 'green',
-    budgetLimit: 800,
-    description: 'Renda, condomínio, utilidades',
-    isActive: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '4',
-    name: 'Entretenimento',
-    icon: '🎬',
-    color: 'pink',
-    budgetLimit: 200,
-    description: 'Cinema, streaming, jogos, saídas',
-    isActive: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  }
-];
-
-const getInitialEntries = (): ExpenseEntry[] => [
-  {
-    id: '1',
-    categoryId: '1',
-    categoryName: 'Alimentação',
-    amount: 85.50,
-    date: '2024-12-20',
-    description: 'Supermercado Continente',
-    isRecurring: false,
-    tags: ['supermercado', 'essencial'],
-    paymentMethod: 'card',
-    isEssential: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '2',
-    categoryId: '2',
-    categoryName: 'Transporte',
-    amount: 45.00,
-    date: '2024-12-18',
-    description: 'Combustível',
-    isRecurring: false,
-    tags: ['gasolina', 'essencial'],
-    paymentMethod: 'card',
-    isEssential: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '3',
-    categoryId: '4',
-    categoryName: 'Entretenimento',
-    amount: 12.99,
-    date: '2024-12-15',
-    description: 'Netflix',
-    isRecurring: true,
-    frequency: 'monthly',
-    tags: ['streaming', 'subscricao'],
-    paymentMethod: 'card',
-    isEssential: false,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '4',
-    categoryId: '1',
-    categoryName: 'Alimentação',
-    amount: 32.50,
-    date: '2024-12-14',
-    description: 'Jantar restaurante',
-    isRecurring: false,
-    tags: ['restaurante', 'social'],
-    paymentMethod: 'card',
-    isEssential: false,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  },
-  {
-    id: '5',
-    categoryId: '3',
-    categoryName: 'Habitação',
-    amount: 750.00,
-    date: '2024-12-01',
-    description: 'Renda do apartamento',
-    isRecurring: true,
-    frequency: 'monthly',
-    tags: ['renda', 'essencial'],
-    paymentMethod: 'transfer',
-    isEssential: true,
-    createdAt: getCurrentTimestamp(),
-    updatedAt: getCurrentTimestamp()
-  }
-];
 
 export const useExpenseData = (): UseExpenseDataReturn => {
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [entries, setEntries] = useState<ExpenseEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Carregar dados do localStorage na inicialização
+  // Initialize data
   useEffect(() => {
-    try {
-      const savedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      const savedEntries = localStorage.getItem(STORAGE_KEYS.ENTRIES);
+    loadData();
+  }, []);
 
-      if (savedCategories && savedEntries) {
+  const loadData = useCallback(() => {
+    try {
+      setIsLoading(true);
+      
+      // Load categories
+      const savedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (savedCategories) {
         setCategories(JSON.parse(savedCategories));
-        setEntries(JSON.parse(savedEntries));
       } else {
-        // Primeira vez - usar dados de exemplo
-        const initialCategories = getInitialCategories();
-        const initialEntries = getInitialEntries();
-        setCategories(initialCategories);
-        setEntries(initialEntries);
+        // Initialize with default categories
+        const defaultCategories: ExpenseCategory[] = DEFAULT_EXPENSE_CATEGORIES.map((cat, index) => ({
+          ...cat,
+          id: `cat-${index + 1}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+        setCategories(defaultCategories);
+        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(defaultCategories));
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados do localStorage:', error);
-      // Fallback para dados iniciais
-      setCategories(getInitialCategories());
-      setEntries(getInitialEntries());
+
+      // Load entries
+      const savedEntries = localStorage.getItem(STORAGE_KEYS.ENTRIES);
+      if (savedEntries) {
+        setEntries(JSON.parse(savedEntries));
+      }
+
+      setError(null);
+    } catch (err) {
+      setError('Erro ao carregar dados das despesas');
+      console.error('Error loading expense data:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
-  // Salvar dados automaticamente quando mudam
+  // Save categories to localStorage
   useEffect(() => {
-    if (!loading) {
-      try {
-        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-      } catch (error) {
-        console.error('Erro ao salvar categorias no localStorage:', error);
-      }
+    if (categories.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
     }
-  }, [categories, loading]);
+  }, [categories]);
 
+  // Save entries to localStorage
   useEffect(() => {
-    if (!loading) {
-      try {
-        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
-      } catch (error) {
-        console.error('Erro ao salvar entradas no localStorage:', error);
-      }
+    if (entries.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
     }
-  }, [entries, loading]);
+  }, [entries]);
 
-  // Funções de gestão de categorias
-  const addCategory = (categoryData: Omit<ExpenseCategory, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // Category management
+  const addCategory = useCallback((categoryData: Omit<ExpenseCategory, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newCategory: ExpenseCategory = {
       ...categoryData,
-      id: generateId(),
-      createdAt: getCurrentTimestamp(),
-      updatedAt: getCurrentTimestamp()
+      id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
     setCategories(prev => [...prev, newCategory]);
-  };
+  }, []);
 
-  const updateCategory = (id: string, updates: Partial<ExpenseCategory>) => {
-    setCategories(prev => prev.map(category => 
-      category.id === id 
-        ? { ...category, ...updates, updatedAt: getCurrentTimestamp() }
-        : category
-    ));
+  const updateCategory = useCallback((id: string, updates: Partial<ExpenseCategory>) => {
+    setCategories(prev => 
+      prev.map(category => 
+        category.id === id 
+          ? { ...category, ...updates, updatedAt: new Date().toISOString() }
+          : category
+      )
+    );
+  }, []);
 
-    // Atualizar categoryName nas entradas se o nome mudou
-    if (updates.name) {
-      setEntries(prev => prev.map(entry =>
-        entry.categoryId === id
-          ? { ...entry, categoryName: updates.name!, updatedAt: getCurrentTimestamp() }
-          : entry
-      ));
-    }
-  };
-
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(category => category.id !== id));
-    // Remover também todas as entradas desta categoria
-    setEntries(prev => prev.filter(entry => entry.categoryId !== id));
-  };
-
-  // Funções de gestão de entradas
-  const addEntry = (entryData: Omit<ExpenseEntry, 'id' | 'categoryName' | 'createdAt' | 'updatedAt'>) => {
-    const category = categories.find(c => c.id === entryData.categoryId);
-    if (!category) {
-      console.error('Categoria não encontrada:', entryData.categoryId);
+  const deleteCategory = useCallback((id: string) => {
+    // Don't allow deletion if there are entries in this category
+    const hasEntries = entries.some(entry => entry.categoryId === id);
+    if (hasEntries) {
+      setError('Não é possível eliminar uma categoria que tem despesas associadas');
       return;
     }
 
+    setCategories(prev => prev.filter(category => category.id !== id));
+  }, [entries]);
+
+  // Entry management
+  const addEntry = useCallback((entryData: Omit<ExpenseEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const category = categories.find(cat => cat.id === entryData.categoryId);
     const newEntry: ExpenseEntry = {
       ...entryData,
-      id: generateId(),
-      categoryName: category.name,
-      createdAt: getCurrentTimestamp(),
-      updatedAt: getCurrentTimestamp()
+      id: `entry-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      categoryName: category?.name || 'Unknown',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
     setEntries(prev => [...prev, newEntry]);
-  };
+  }, [categories]);
 
-  const updateEntry = (id: string, updates: Partial<ExpenseEntry>) => {
-    setEntries(prev => prev.map(entry => {
-      if (entry.id === id) {
-        const updatedEntry = { ...entry, ...updates, updatedAt: getCurrentTimestamp() };
-        
-        // Se mudou a categoria, atualizar o categoryName
-        if (updates.categoryId && updates.categoryId !== entry.categoryId) {
-          const newCategory = categories.find(c => c.id === updates.categoryId);
-          if (newCategory) {
-            updatedEntry.categoryName = newCategory.name;
+  const updateEntry = useCallback((id: string, updates: Partial<ExpenseEntry>) => {
+    setEntries(prev => 
+      prev.map(entry => {
+        if (entry.id === id) {
+          const updatedEntry = { ...entry, ...updates, updatedAt: new Date().toISOString() };
+          
+          // Update category name if categoryId changed
+          if (updates.categoryId) {
+            const category = categories.find(cat => cat.id === updates.categoryId);
+            updatedEntry.categoryName = category?.name || entry.categoryName;
           }
+          
+          return updatedEntry;
         }
-        
-        return updatedEntry;
-      }
-      return entry;
-    }));
-  };
+        return entry;
+      })
+    );
+  }, [categories]);
 
-  const deleteEntry = (id: string) => {
+  const deleteEntry = useCallback((id: string) => {
     setEntries(prev => prev.filter(entry => entry.id !== id));
+  }, []);
+
+  // Utility functions
+  const getCategoryExpenses = useCallback((categoryId: string) => {
+    return entries.filter(entry => entry.categoryId === categoryId);
+  }, [entries]);
+
+  const getFixedExpenses = useCallback(() => {
+    return entries.filter(entry => entry.type === 'fixed');
+  }, [entries]);
+
+  const getVariableExpenses = useCallback(() => {
+    return entries.filter(entry => entry.type === 'variable');
+  }, [entries]);
+
+  const getDebtExpenses = useCallback(() => {
+    return entries.filter(entry => entry.debtId);
+  }, [entries]);
+
+  // Calculate statistics
+  const stats: ExpenseStats = {
+    totalExpenses: entries.reduce((sum, entry) => sum + entry.amount, 0),
+    fixedExpenses: getFixedExpenses().reduce((sum, entry) => sum + entry.amount, 0),
+    variableExpenses: getVariableExpenses().reduce((sum, entry) => sum + entry.amount, 0),
+    debtPayments: getDebtExpenses().reduce((sum, entry) => sum + entry.amount, 0),
+    averageMonthly: 0, // This would need historical data
+    categoryBreakdown: categories.map(category => {
+      const categoryEntries = getCategoryExpenses(category.id);
+      const amount = categoryEntries.reduce((sum, entry) => sum + entry.amount, 0);
+      const totalExpenses = entries.reduce((sum, entry) => sum + entry.amount, 0);
+      
+      return {
+        categoryId: category.id,
+        categoryName: category.name,
+        amount,
+        percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+      };
+    }),
+    monthlyTrend: [], // This would need historical data
+    budgetVsActual: categories.map(category => {
+      const categoryEntries = getCategoryExpenses(category.id);
+      const actual = categoryEntries.reduce((sum, entry) => sum + entry.amount, 0);
+      
+      return {
+        categoryId: category.name,
+        budgeted: category.budget,
+        actual,
+        variance: actual - category.budget
+      };
+    })
   };
 
-  // Funções utilitárias
-  const clearAllData = () => {
+  // Data export/import
+  const exportData = useCallback(() => {
+    const exportData = {
+      categories,
+      entries,
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    };
+    return JSON.stringify(exportData, null, 2);
+  }, [categories, entries]);
+
+  const importData = useCallback((jsonData: string): boolean => {
+    try {
+      const data = JSON.parse(jsonData);
+      
+      if (data.categories && Array.isArray(data.categories)) {
+        setCategories(data.categories);
+      }
+      
+      if (data.entries && Array.isArray(data.entries)) {
+        setEntries(data.entries);
+      }
+      
+      return true;
+    } catch (err) {
+      setError('Erro ao importar dados');
+      return false;
+    }
+  }, []);
+
+  const clearAllData = useCallback(() => {
     setCategories([]);
     setEntries([]);
     localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
     localStorage.removeItem(STORAGE_KEYS.ENTRIES);
-  };
-
-  const exportData = (): string => {
-    const data = {
-      categories,
-      entries,
-      exportDate: getCurrentTimestamp(),
-      version: '1.0'
-    };
-    return JSON.stringify(data, null, 2);
-  };
-
-  const importData = (jsonData: string): boolean => {
-    try {
-      const data = JSON.parse(jsonData);
-      
-      // Validação básica
-      if (!data.categories || !data.entries || !Array.isArray(data.categories) || !Array.isArray(data.entries)) {
-        throw new Error('Formato de dados inválido');
-      }
-
-      setCategories(data.categories);
-      setEntries(data.entries);
-      return true;
-    } catch (error) {
-      console.error('Erro ao importar dados:', error);
-      return false;
-    }
-  };
+  }, []);
 
   return {
     categories,
     entries,
-    loading,
+    stats,
+    isLoading,
+    error,
     addCategory,
     updateCategory,
     deleteCategory,
     addEntry,
     updateEntry,
     deleteEntry,
-    clearAllData,
+    getCategoryExpenses,
+    getFixedExpenses,
+    getVariableExpenses,
+    getDebtExpenses,
     exportData,
-    importData
+    importData,
+    clearAllData
   };
 };

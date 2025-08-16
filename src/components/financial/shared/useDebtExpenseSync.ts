@@ -1,280 +1,171 @@
+// src/components/financial/shared/hooks/useDebtExpenseSync.ts
 import { useState, useEffect, useCallback } from 'react';
 
-export interface Debt {
+interface Debt {
   id: string;
   name: string;
-  totalAmount: number;
   monthlyPayment: number;
-  interestRate: number;
-  remainingMonths: number;
-  category: string;
+  type: string;
 }
 
-export interface DebtPayment {
-  id: string;
-  debtId: string;
-  debtName: string;
-  amount: number;
-  date: string;
-  description?: string;
-  isAutomatic: boolean;
-  expenseId?: string; // ID da despesa correspondente
-}
-
-export interface ExpenseEntry {
+interface ExpenseEntry {
   id: string;
   description: string;
   amount: number;
   categoryId: string;
   date: string;
-  isRecurring?: boolean;
-  debtId?: string; // Ligação à dívida
+  isRecurring: boolean;
+  debtId?: string;
+}
+
+interface DebtExpenseSync {
+  debtId: string;
+  expenseId: string;
+  amount: number;
+  isAutomatic: boolean;
+  syncedAt: string;
 }
 
 interface UseDebtExpenseSyncReturn {
-  debts: Debt[];
-  debtPayments: DebtPayment[];
-  expenses: ExpenseEntry[];
-  addDebtPayment: (payment: Omit<DebtPayment, 'id'>) => void;
-  updateDebtPayment: (id: string, payment: Partial<DebtPayment>) => void;
-  deleteDebtPayment: (id: string) => void;
+  syncData: DebtExpenseSync[];
   syncDebtWithExpense: (debtId: string, expenseId: string) => void;
-  getDebtExpenses: (debtId: string) => ExpenseEntry[];
-  getTotalPaidForDebt: (debtId: string) => number;
-  isDebtPaymentSynced: (paymentId: string) => boolean;
+  createExpenseFromDebt: (debt: Debt) => ExpenseEntry;
+  unsyncDebt: (debtId: string) => void;
+  isSynced: (debtId: string) => boolean;
+  getSyncedExpense: (debtId: string) => ExpenseEntry | null;
 }
 
-const STORAGE_KEYS = {
-  DEBTS: 'financial-debts',
-  DEBT_PAYMENTS: 'debt-payments',
-  EXPENSES: 'financial-expenses'
-} as const;
+const STORAGE_KEY = 'debt-expense-sync';
 
-// Mock data inicial
-const getMockDebts = (): Debt[] => [
-  {
-    id: 'debt1',
-    name: 'Crédito Habitação',
-    totalAmount: 85000,
-    monthlyPayment: 420,
-    interestRate: 3.5,
-    remainingMonths: 180,
-    category: 'mortgage'
-  },
-  {
-    id: 'debt2',
-    name: 'Cartão de Crédito',
-    totalAmount: 2500,
-    monthlyPayment: 150,
-    interestRate: 18.9,
-    remainingMonths: 20,
-    category: 'credit_card'
-  },
-  {
-    id: 'debt3',
-    name: 'Empréstimo Automóvel',
-    totalAmount: 12000,
-    monthlyPayment: 280,
-    interestRate: 6.2,
-    remainingMonths: 48,
-    category: 'auto_loan'
-  }
-];
+export const useDebtExpenseSync = (
+  debts: Debt[] = [],
+  expenses: ExpenseEntry[] = [],
+  onExpenseCreate?: (expense: Omit<ExpenseEntry, 'id'>) => void,
+  onExpenseUpdate?: (id: string, updates: Partial<ExpenseEntry>) => void
+): UseDebtExpenseSyncReturn => {
+  const [syncData, setSyncData] = useState<DebtExpenseSync[]>([]);
 
-const getMockDebtPayments = (): DebtPayment[] => [
-  {
-    id: 'payment1',
-    debtId: 'debt1',
-    debtName: 'Crédito Habitação',
-    amount: 420,
-    date: '2024-01-15',
-    description: 'Pagamento mensal janeiro',
-    isAutomatic: true,
-    expenseId: 'expense1'
-  },
-  {
-    id: 'payment2',
-    debtId: 'debt2',
-    debtName: 'Cartão de Crédito',
-    amount: 150,
-    date: '2024-01-10',
-    description: 'Pagamento mínimo janeiro',
-    isAutomatic: false,
-    expenseId: 'expense2'
-  }
-];
-
-const getMockExpenses = (): ExpenseEntry[] => [
-  {
-    id: 'expense1',
-    description: 'Pagamento Crédito Habitação',
-    amount: 420,
-    categoryId: 'debts',
-    date: '2024-01-15',
-    isRecurring: true,
-    debtId: 'debt1'
-  },
-  {
-    id: 'expense2',
-    description: 'Pagamento Cartão de Crédito',
-    amount: 150,
-    categoryId: 'debts',
-    date: '2024-01-10',
-    debtId: 'debt2'
-  }
-];
-
-export const useDebtExpenseSync = (): UseDebtExpenseSyncReturn => {
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
-  const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
-
-  // Carregar dados iniciais
+  // Load sync data from localStorage
   useEffect(() => {
-    const savedDebts = localStorage.getItem(STORAGE_KEYS.DEBTS);
-    const savedPayments = localStorage.getItem(STORAGE_KEYS.DEBT_PAYMENTS);
-    const savedExpenses = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-
-    if (savedDebts && savedPayments && savedExpenses) {
-      setDebts(JSON.parse(savedDebts));
-      setDebtPayments(JSON.parse(savedPayments));
-      setExpenses(JSON.parse(savedExpenses));
-    } else {
-      // Primeira vez - usar dados mock
-      const initialDebts = getMockDebts();
-      const initialPayments = getMockDebtPayments();
-      const initialExpenses = getMockExpenses();
-      
-      setDebts(initialDebts);
-      setDebtPayments(initialPayments);
-      setExpenses(initialExpenses);
-      
-      // Salvar no localStorage
-      localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(initialDebts));
-      localStorage.setItem(STORAGE_KEYS.DEBT_PAYMENTS, JSON.stringify(initialPayments));
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(initialExpenses));
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setSyncData(JSON.parse(saved));
+      } catch (error) {
+        console.error('Error loading sync data:', error);
+      }
     }
   }, []);
 
-  // Salvar mudanças no localStorage
+  // Save sync data to localStorage
   useEffect(() => {
-    if (debts.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(debts));
-    }
-  }, [debts]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(syncData));
+  }, [syncData]);
 
-  useEffect(() => {
-    if (debtPayments.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.DEBT_PAYMENTS, JSON.stringify(debtPayments));
-    }
-  }, [debtPayments]);
-
-  useEffect(() => {
-    if (expenses.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-    }
-  }, [expenses]);
-
-  // Adicionar pagamento de dívida
-  const addDebtPayment = useCallback((payment: Omit<DebtPayment, 'id'>) => {
-    const newPayment: DebtPayment = {
-      ...payment,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
-    };
-
-    setDebtPayments(prev => [...prev, newPayment]);
-
-    // Criar despesa correspondente automaticamente
-    const correspondingExpense: ExpenseEntry = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      description: `Pagamento ${payment.debtName}`,
-      amount: payment.amount,
-      categoryId: 'debts',
-      date: payment.date,
-      isRecurring: payment.isAutomatic,
-      debtId: payment.debtId
-    };
-
-    setExpenses(prev => [...prev, correspondingExpense]);
-
-    // Atualizar o pagamento com a referência da despesa
-    newPayment.expenseId = correspondingExpense.id;
-    setDebtPayments(prev => 
-      prev.map(p => p.id === newPayment.id ? newPayment : p)
-    );
-  }, []);
-
-  // Atualizar pagamento de dívida
-  const updateDebtPayment = useCallback((id: string, updates: Partial<DebtPayment>) => {
-    setDebtPayments(prev => 
-      prev.map(payment => 
-        payment.id === id ? { ...payment, ...updates } : payment
-      )
-    );
-
-    // Se houver despesa correspondente, atualizar também
-    const payment = debtPayments.find(p => p.id === id);
-    if (payment?.expenseId && updates.amount) {
-      setExpenses(prev => 
-        prev.map(expense => 
-          expense.id === payment.expenseId 
-            ? { ...expense, amount: updates.amount! }
-            : expense
-        )
-      );
-    }
-  }, [debtPayments]);
-
-  // Deletar pagamento de dívida
-  const deleteDebtPayment = useCallback((id: string) => {
-    const payment = debtPayments.find(p => p.id === id);
-    
-    setDebtPayments(prev => prev.filter(p => p.id !== id));
-    
-    // Remover despesa correspondente também
-    if (payment?.expenseId) {
-      setExpenses(prev => prev.filter(e => e.id !== payment.expenseId));
-    }
-  }, [debtPayments]);
-
-  // Sincronizar dívida com despesa existente
   const syncDebtWithExpense = useCallback((debtId: string, expenseId: string) => {
-    setExpenses(prev => 
-      prev.map(expense => 
-        expense.id === expenseId 
-          ? { ...expense, debtId, categoryId: 'debts' }
-          : expense
-      )
-    );
-  }, []);
+    const debt = debts.find(d => d.id === debtId);
+    const expense = expenses.find(e => e.id === expenseId);
+    
+    if (!debt || !expense) return;
 
-  // Obter despesas de uma dívida específica
-  const getDebtExpenses = useCallback((debtId: string): ExpenseEntry[] => {
-    return expenses.filter(expense => expense.debtId === debtId);
-  }, [expenses]);
+    const newSync: DebtExpenseSync = {
+      debtId,
+      expenseId,
+      amount: expense.amount,
+      isAutomatic: false,
+      syncedAt: new Date().toISOString()
+    };
 
-  // Calcular total pago para uma dívida
-  const getTotalPaidForDebt = useCallback((debtId: string): number => {
-    const debtExpenses = getDebtExpenses(debtId);
-    return debtExpenses.reduce((total, expense) => total + expense.amount, 0);
-  }, [getDebtExpenses]);
+    setSyncData(prev => {
+      // Remove existing sync for this debt
+      const filtered = prev.filter(sync => sync.debtId !== debtId);
+      return [...filtered, newSync];
+    });
 
-  // Verificar se um pagamento está sincronizado
-  const isDebtPaymentSynced = useCallback((paymentId: string): boolean => {
-    const payment = debtPayments.find(p => p.id === paymentId);
-    return !!payment?.expenseId;
-  }, [debtPayments]);
+    // Update expense to link to debt
+    if (onExpenseUpdate) {
+      onExpenseUpdate(expenseId, { debtId });
+    }
+  }, [debts, expenses, onExpenseUpdate]);
+
+  const createExpenseFromDebt = useCallback((debt: Debt): ExpenseEntry => {
+    const newExpense: ExpenseEntry = {
+      id: `expense-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      description: `Pagamento ${debt.name}`,
+      amount: debt.monthlyPayment,
+      categoryId: 'debts', // Assuming there's a debts category
+      date: new Date().toISOString().split('T')[0],
+      isRecurring: true,
+      debtId: debt.id
+    };
+
+    // Create the expense
+    if (onExpenseCreate) {
+      onExpenseCreate(newExpense);
+    }
+
+    // Create automatic sync
+    const newSync: DebtExpenseSync = {
+      debtId: debt.id,
+      expenseId: newExpense.id,
+      amount: debt.monthlyPayment,
+      isAutomatic: true,
+      syncedAt: new Date().toISOString()
+    };
+
+    setSyncData(prev => {
+      const filtered = prev.filter(sync => sync.debtId !== debt.id);
+      return [...filtered, newSync];
+    });
+
+    return newExpense;
+  }, [onExpenseCreate]);
+
+  const unsyncDebt = useCallback((debtId: string) => {
+    const sync = syncData.find(s => s.debtId === debtId);
+    
+    if (sync && onExpenseUpdate) {
+      // Remove debt reference from expense
+      onExpenseUpdate(sync.expenseId, { debtId: undefined });
+    }
+
+    setSyncData(prev => prev.filter(sync => sync.debtId !== debtId));
+  }, [syncData, onExpenseUpdate]);
+
+  const isSynced = useCallback((debtId: string): boolean => {
+    return syncData.some(sync => sync.debtId === debtId);
+  }, [syncData]);
+
+  const getSyncedExpense = useCallback((debtId: string): ExpenseEntry | null => {
+    const sync = syncData.find(s => s.debtId === debtId);
+    if (!sync) return null;
+    
+    return expenses.find(expense => expense.id === sync.expenseId) || null;
+  }, [syncData, expenses]);
+
+  // Auto-sync new debts if they have matching expenses
+  useEffect(() => {
+    debts.forEach(debt => {
+      if (!isSynced(debt.id)) {
+        // Look for expenses that might match this debt
+        const matchingExpense = expenses.find(expense => 
+          expense.description.toLowerCase().includes(debt.name.toLowerCase()) &&
+          Math.abs(expense.amount - debt.monthlyPayment) < 0.01
+        );
+
+        if (matchingExpense) {
+          syncDebtWithExpense(debt.id, matchingExpense.id);
+        }
+      }
+    });
+  }, [debts, expenses, isSynced, syncDebtWithExpense]);
 
   return {
-    debts,
-    debtPayments,
-    expenses,
-    addDebtPayment,
-    updateDebtPayment,
-    deleteDebtPayment,
+    syncData,
     syncDebtWithExpense,
-    getDebtExpenses,
-    getTotalPaidForDebt,
-    isDebtPaymentSynced
+    createExpenseFromDebt,
+    unsyncDebt,
+    isSynced,
+    getSyncedExpense
   };
 };

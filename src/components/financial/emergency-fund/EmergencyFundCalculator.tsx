@@ -1,99 +1,158 @@
-import React from 'react';
-import { DollarSign, Calendar, TrendingUp } from 'lucide-react';
-
-interface Calculations {
-  targetAmount: number;
-  remaining: number;
-  monthsToComplete: number;
-}
+// src/components/financial/emergency-fund/EmergencyFundCalculator.tsx
+import React, { useState, useEffect } from 'react';
+import { Calculator, TrendingUp, DollarSign, Calendar } from 'lucide-react';
 
 interface EmergencyFundCalculatorProps {
-  monthlyContribution: number;
-  setMonthlyContribution: (value: number) => void;
+  monthlyExpenses: number;
+  currentAmount: number;
   targetMonths: number;
-  setTargetMonths: (value: number) => void;
-  calculations: Calculations;
-  monthlySavings: number;
+  showBalances: boolean;
   formatCurrency: (value: number) => string;
+  onCalculationUpdate: (data: {
+    monthlyContribution: number;
+    monthsToGoal: number;
+    totalNeeded: number;
+  }) => void;
 }
 
 export const EmergencyFundCalculator: React.FC<EmergencyFundCalculatorProps> = ({
-  monthlyContribution,
-  setMonthlyContribution,
+  monthlyExpenses,
+  currentAmount,
   targetMonths,
-  setTargetMonths,
-  calculations,
-  monthlySavings,
-  formatCurrency
+  showBalances,
+  formatCurrency,
+  onCalculationUpdate
 }) => {
-  return (
-    <div className="bg-gray-50 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Planeamento de Contribuições</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Contribuição Mensal
-          </label>
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="number"
-              value={monthlyContribution}
-              onChange={(e) => setMonthlyContribution(Number(e.target.value))}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="200"
-            />
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Recomendado: {formatCurrency(monthlySavings * 0.3)} (30% das poupanças)
-          </p>
-        </div>
+  const [monthlyContribution, setMonthlyContribution] = useState(200);
+  const [customTargetMonths, setCustomTargetMonths] = useState(targetMonths);
+  const [calculationMode, setCalculationMode] = useState<'contribution' | 'timeline'>('contribution');
 
+  const targetAmount = monthlyExpenses * customTargetMonths;
+  const remaining = Math.max(0, targetAmount - currentAmount);
+  
+  const monthsToGoal = monthlyContribution > 0 ? Math.ceil(remaining / monthlyContribution) : 0;
+  const recommendedContribution = monthsToGoal > 0 ? remaining / 12 : 0; // Para atingir em 1 ano
+
+  useEffect(() => {
+    onCalculationUpdate({
+      monthlyContribution,
+      monthsToGoal,
+      totalNeeded: remaining
+    });
+  }, [monthlyContribution, monthsToGoal, remaining, onCalculationUpdate]);
+
+  return (
+    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+      <div className="flex items-center space-x-3 mb-6">
+        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+          <Calculator className="h-6 w-6 text-indigo-600" />
+        </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Meses para Meta
-          </label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="number"
-              value={targetMonths}
-              onChange={(e) => setTargetMonths(Number(e.target.value))}
-              min="3"
-              max="12"
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Entre 3-12 meses de despesas
-          </p>
+          <h3 className="text-lg font-semibold text-gray-900">Calculadora do Fundo</h3>
+          <p className="text-sm text-gray-600">Planeie a sua estratégia de poupança</p>
         </div>
       </div>
 
-      {/* Projeção */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center space-x-2 mb-3">
-          <TrendingUp className="h-5 w-5 text-blue-600" />
-          <h4 className="font-semibold text-blue-900">Projeção</h4>
+      {/* Mode Selector */}
+      <div className="flex space-x-2 mb-6">
+        <button
+          onClick={() => setCalculationMode('contribution')}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            calculationMode === 'contribution'
+              ? 'bg-indigo-100 text-indigo-700'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Por Contribuição
+        </button>
+        <button
+          onClick={() => setCalculationMode('timeline')}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            calculationMode === 'timeline'
+              ? 'bg-indigo-100 text-indigo-700'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Por Prazo
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {/* Target Months Input */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Meses de cobertura desejados
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="24"
+            value={customTargetMonths}
+            onChange={(e) => setCustomTargetMonths(Number(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-blue-700">Tempo para meta:</span>
-            <p className="font-semibold text-blue-900">
-              {calculations.monthsToComplete > 0 ? `${calculations.monthsToComplete} meses` : 'Meta atingida'}
+
+        {/* Monthly Contribution Input */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Contribuição mensal (€)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="10"
+            value={monthlyContribution}
+            onChange={(e) => setMonthlyContribution(Number(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        {/* Results */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <DollarSign className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">Meta Total</span>
+            </div>
+            <p className="text-lg font-bold text-blue-900">
+              {showBalances ? formatCurrency(targetAmount) : '€ ••••••'}
             </p>
           </div>
-          <div>
-            <span className="text-blue-700">Data estimada:</span>
-            <p className="font-semibold text-blue-900">
-              {calculations.monthsToComplete > 0 ? 
-                new Date(Date.now() + calculations.monthsToComplete * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-PT') 
-                : 'Já atingida'
-              }
+
+          <div className="bg-orange-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium text-orange-800">Ainda Falta</span>
+            </div>
+            <p className="text-lg font-bold text-orange-900">
+              {showBalances ? formatCurrency(remaining) : '€ ••••••'}
+            </p>
+          </div>
+
+          <div className="bg-green-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Calendar className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">Tempo Estimado</span>
+            </div>
+            <p className="text-lg font-bold text-green-900">
+              {monthsToGoal > 0 ? `${monthsToGoal} meses` : 'Meta atingida'}
             </p>
           </div>
         </div>
+
+        {/* Recommendations */}
+        {recommendedContribution > 0 && (
+          <div className="bg-indigo-50 rounded-lg p-4 mt-4">
+            <h4 className="font-medium text-indigo-900 mb-2">💡 Recomendação</h4>
+            <p className="text-sm text-indigo-800">
+              Para atingir a meta em 12 meses, recomendamos uma contribuição mensal de{' '}
+              <span className="font-bold">
+                {showBalances ? formatCurrency(recommendedContribution) : '€ •••'}
+              </span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
