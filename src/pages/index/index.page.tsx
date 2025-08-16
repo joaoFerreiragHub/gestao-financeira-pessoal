@@ -31,6 +31,7 @@ import { GoalsSection } from '../../components/financial/goals/GoalsSection';
 import { IncomeSection } from '../../components/financial/income/IncomeSection';
 import { ExpenseSection } from '../../components/financial/expenses/ExpenseSection';
 import { DebtSection } from '../../components/financial/debts/DebtSection';
+import { EmergencyFundSection } from '../../components/financial/emergency-fund/EmergencyFundSection';
 
 const ModernFinanceDashboard = () => {
   const [showBalances, setShowBalances] = useState(true);
@@ -76,16 +77,16 @@ const ModernFinanceDashboard = () => {
   };
 
   // Sidebar Navigation
-  const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, badge: null },
-    { id: 'accounts', label: 'Contas Bancárias', icon: Building2, badge: '4' },
-    { id: 'income', label: 'Rendimentos', icon: TrendingUp, badge: '2' },
-    { id: 'expenses', label: 'Despesas', icon: Receipt, badge: '5' },
-    { id: 'debts', label: 'Dívidas', icon: CreditCard, badge: '1' },
-    { id: 'goals', label: 'Metas Financeiras', icon: Target, badge: '5' },
-    { id: 'projections', label: 'Projeções', icon: LineChart, badge: null },
-    { id: 'reports', label: 'Relatórios', icon: FileText, badge: null }
-  ];
+const navigationItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: Home, badge: null },
+  { id: 'accounts', label: 'Contas Bancárias', icon: Building2, badge: '4' },
+  { id: 'income', label: 'Rendimentos', icon: TrendingUp, badge: '2' },
+  { id: 'expenses', label: 'Despesas', icon: Receipt, badge: '5' },
+  { id: 'debts', label: 'Dívidas', icon: CreditCard, badge: '1' },
+  { id: 'emergency', label: 'Fundo Emergência', icon: Shield, badge: null }, // 🆕 FALTA ESTE
+  { id: 'goals', label: 'Metas Financeiras', icon: Target, badge: '5' },
+];
+
 
   const categoryData = [
     { name: 'Habitação', value: 750, percentage: 35.7, color: 'bg-blue-500' },
@@ -264,6 +265,13 @@ const ModernFinanceDashboard = () => {
             onToggleBalances={() => setShowBalances(!showBalances)}
           />
         );
+      case 'emergency':
+      return (
+        <EmergencyFundSection 
+          showBalances={showBalances} 
+          onToggleBalances={() => setShowBalances(!showBalances)}
+        />
+      );
       case 'goals':
         return (
           <GoalsSection 

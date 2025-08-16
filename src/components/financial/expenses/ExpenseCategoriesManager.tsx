@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Edit3, 
-  Trash2, 
   Tag, 
   CreditCard, 
   Home, 
@@ -10,13 +9,9 @@ import {
   ShoppingCart, 
   Coffee, 
   Zap, 
-  MoreHorizontal,
   TrendingDown,
-  DollarSign,
-  AlertTriangle,
   Target,
-  Calendar,
-  Settings
+
 } from 'lucide-react';
 import { useDebtExpenseSync } from '../shared/useDebtExpenseSync';
 import { CategoryCard } from './CategoryCard';
