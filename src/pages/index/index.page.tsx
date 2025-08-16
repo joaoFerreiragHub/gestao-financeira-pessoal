@@ -21,7 +21,8 @@ import {
   ChevronRight,
   Sparkles,
   Building2,
-  FileText
+  FileText,
+  Shield  
 } from 'lucide-react';
 
 // Import the new sections we created
