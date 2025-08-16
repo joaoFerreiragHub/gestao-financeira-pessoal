@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Tag, FileText, CreditCard, Repeat, AlertCircle, CheckCircle } from 'lucide-react';
-import { ExpenseEntry, ExpenseCategory } from '../../../types/expenses';
+import { ExpenseEntry, ExpenseCategory } from '../../../types/financial/expenses';
 
 interface ExpenseEntryFormProps {
   entry?: ExpenseEntry | null;

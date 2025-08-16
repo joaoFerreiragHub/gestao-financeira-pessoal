@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Edit, Trash2, Tag, Calendar, CreditCard, AlertCircle, CheckCircle, MoreVertical } from 'lucide-react';
-import { ExpenseEntry, ExpenseCategory } from '../../../types/expenses';
+import { ExpenseEntry, ExpenseCategory } from '../../../types/financial/expenses';
 
 interface ExpenseHistoryProps {
   entries: ExpenseEntry[];

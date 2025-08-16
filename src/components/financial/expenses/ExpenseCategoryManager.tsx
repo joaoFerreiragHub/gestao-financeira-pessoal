@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Tag, TrendingUp, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { ExpenseCategory, ExpenseEntry } from '../../../types/expenses';
+import { ExpenseCategory, ExpenseEntry } from '../../../types/financial/expenses';
 
 interface ExpenseCategoryManagerProps {
   categories: ExpenseCategory[];

@@ -1,7 +1,7 @@
 // src/hooks/useExpenseStats.ts
 
 import { useMemo } from 'react';
-import { ExpenseCategory, ExpenseEntry, ExpenseStats, UseExpenseStatsReturn } from '../../../../types/expenses';
+import { ExpenseCategory, ExpenseEntry, ExpenseStats, UseExpenseStatsReturn } from '../../../../types/financial/expenses';
 
 
 export const useExpenseStats = (

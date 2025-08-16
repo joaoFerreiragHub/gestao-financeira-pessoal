@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { PiggyBank, AlertTriangle, TrendingUp, TrendingDown, Edit, Target, BarChart3 } from 'lucide-react';
-import { ExpenseCategory, ExpenseStats } from '../../../types/expenses';
+import { ExpenseCategory, ExpenseStats } from '../../../types/financial/expenses';
 
 interface ExpenseBudgetManagerProps {
   categories: ExpenseCategory[];

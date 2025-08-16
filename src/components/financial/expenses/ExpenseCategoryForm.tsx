@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Tag, Palette, DollarSign, FileText, Eye, EyeOff } from 'lucide-react';
-import { ExpenseCategory } from '../../../types/expenses';
+import { ExpenseCategory } from '../../../types/financial/expenses';
 
 interface ExpenseCategoryFormProps {
   category?: ExpenseCategory | null;

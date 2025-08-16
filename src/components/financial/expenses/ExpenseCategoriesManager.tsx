@@ -14,27 +14,8 @@ import {
 
 } from 'lucide-react';
 import { useDebtExpenseSync } from '../shared/useDebtExpenseSync';
+import { ExpenseCategory, ExpenseEntry } from '../../../types/financial/expenses';
 import { CategoryCard } from './CategoryCard';
-
-
-interface ExpenseCategory {
-  id: string;
-  name: string;
-  icon: any;
-  color: string;
-  budget: number;
-  isDebtCategory?: boolean;
-}
-
-interface ExpenseEntry {
-  id: string;
-  description: string;
-  amount: number;
-  categoryId: string;
-  date: string;
-  isRecurring?: boolean;
-  debtId?: string;
-}
 
 interface ExpenseCategoriesManagerProps {
   showBalances?: boolean;
@@ -55,23 +36,79 @@ export const ExpenseCategoriesManager: React.FC<ExpenseCategoriesManagerProps> =
 
   // Categorias padrão
   const defaultCategories: ExpenseCategory[] = [
-    { id: 'housing', name: 'Habitação', icon: Home, color: 'bg-blue-500', budget: 1200 },
-    { id: 'food', name: 'Alimentação', icon: ShoppingCart, color: 'bg-green-500', budget: 400 },
-    { id: 'transport', name: 'Transporte', icon: Car, color: 'bg-orange-500', budget: 300 },
-    { id: 'utilities', name: 'Utilidades', icon: Zap, color: 'bg-yellow-500', budget: 150 },
-    { id: 'entertainment', name: 'Entretenimento', icon: Coffee, color: 'bg-purple-500', budget: 200 },
-    { id: 'debts', name: 'Dívidas', icon: CreditCard, color: 'bg-red-500', budget: 500, isDebtCategory: true }
+    { id: 'housing', name: 'Habitação', icon: '🏠', color: 'bg-blue-500', budget: 1200, type: 'fixed', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'food', name: 'Alimentação', icon: '🛒', color: 'bg-green-500', budget: 400, type: 'variable', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'transport', name: 'Transporte', icon: '🚗', color: 'bg-orange-500', budget: 300, type: 'variable', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'utilities', name: 'Utilidades', icon: '⚡', color: 'bg-yellow-500', budget: 150, type: 'fixed', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'entertainment', name: 'Entretenimento', icon: '☕', color: 'bg-purple-500', budget: 200, type: 'variable', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'debts', name: 'Dívidas', icon: '💳', color: 'bg-red-500', budget: 500, type: 'debt', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ];
 
   // Mock data
   useEffect(() => {
     setCategories(defaultCategories);
     setExpenses([
-      { id: '1', description: 'Renda do Apartamento', amount: 650, categoryId: 'housing', date: '2024-01-15', isRecurring: true },
-      { id: '2', description: 'Supermercado Continente', amount: 85.50, categoryId: 'food', date: '2024-01-14' },
-      { id: '3', description: 'Combustível', amount: 45.00, categoryId: 'transport', date: '2024-01-13' },
-      { id: '4', description: 'Pagamento Crédito Habitação', amount: 420, categoryId: 'debts', date: '2024-01-15', debtId: 'debt1' },
-      { id: '5', description: 'Netflix', amount: 15.99, categoryId: 'entertainment', date: '2024-01-12', isRecurring: true }
+      { 
+        id: '1', 
+        description: 'Renda do Apartamento', 
+        amount: 650, 
+        categoryId: 'housing', 
+        categoryName: 'Habitação',
+        date: '2024-01-15', 
+        type: 'fixed',
+        isRecurring: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      { 
+        id: '2', 
+        description: 'Supermercado Continente', 
+        amount: 85.50, 
+        categoryId: 'food', 
+        categoryName: 'Alimentação',
+        date: '2024-01-14',
+        type: 'variable',
+        isRecurring: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      { 
+        id: '3', 
+        description: 'Combustível', 
+        amount: 45.00, 
+        categoryId: 'transport', 
+        categoryName: 'Transporte',
+        date: '2024-01-13',
+        type: 'variable',
+        isRecurring: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      { 
+        id: '4', 
+        description: 'Pagamento Crédito Habitação', 
+        amount: 420, 
+        categoryId: 'debts', 
+        categoryName: 'Dívidas',
+        date: '2024-01-15', 
+        type: 'fixed',
+        isRecurring: true,
+        debtId: 'debt1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      { 
+        id: '5', 
+        description: 'Netflix', 
+        amount: 15.99, 
+        categoryId: 'entertainment', 
+        categoryName: 'Entretenimento',
+        date: '2024-01-12', 
+        type: 'fixed',
+        isRecurring: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
     ]);
   }, []);
 

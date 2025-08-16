@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Search, Filter, X, Calendar, DollarSign } from 'lucide-react';
-import { ExpenseFilters as ExpenseFiltersType, ExpenseCategory } from '../../../types/expenses';
+import { ExpenseFilters as ExpenseFiltersType, ExpenseCategory } from '../../../types/financial/expenses';
 
 interface ExpenseFiltersProps {
   filters: ExpenseFiltersType;

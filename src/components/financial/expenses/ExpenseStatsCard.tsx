@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TrendingDown, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react';
-import { ExpenseStats } from '../../../types/expenses';
+import { ExpenseStats } from '../../../types/financial/expenses';
 
 interface ExpenseStatsCardProps {
   stats: ExpenseStats;

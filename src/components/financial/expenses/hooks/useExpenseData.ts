@@ -6,7 +6,7 @@ import {
   ExpenseStats, 
   UseExpenseDataReturn,
   DEFAULT_EXPENSE_CATEGORIES 
-} from '../../../types/financial/expenses';
+} from '../../../../types/financial/expenses';
 
 const STORAGE_KEYS = {
   CATEGORIES: 'expense-categories',
