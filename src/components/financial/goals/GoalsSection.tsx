@@ -486,3 +486,4 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
     </div>
   );
 };
+

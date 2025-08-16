@@ -389,3 +389,4 @@ export const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     </div>
   );
 };
+

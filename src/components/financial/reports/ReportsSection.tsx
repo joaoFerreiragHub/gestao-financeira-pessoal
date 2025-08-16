@@ -507,3 +507,4 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({
     </div>
   );
 };
+
