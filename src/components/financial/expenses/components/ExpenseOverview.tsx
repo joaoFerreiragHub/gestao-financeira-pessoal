@@ -260,3 +260,4 @@ export const ExpenseOverview: React.FC<ExpenseOverviewProps> = ({
     </div>
   );
 };
+

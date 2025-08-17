@@ -18,6 +18,8 @@ import {
   PiggyBank,
   Wallet
 } from 'lucide-react';
+import { formatCurrency } from '../../../utils/financial/formatters';
+import { calculateEmergencyFundMetrics } from '../../../utils/financial/calculations';
 import { EmergencyFundCalculator } from './EmergencyFundCalculator';
 import { FundStatusCard } from './components/FundStatusCard';
 import { PlanCard } from './components/PlanCard';
@@ -102,23 +104,20 @@ export const EmergencyFundSection: React.FC<EmergencyFundSectionProps> = ({
     }
   ];
 
-  // Cálculos do fundo de emergência
-  const calculations = {
-    targetAmount: financialData.monthlyExpenses * targetMonths,
-    currentMonths: financialData.currentEmergencyFund / financialData.monthlyExpenses,
-    remaining: (financialData.monthlyExpenses * targetMonths) - financialData.currentEmergencyFund,
-    progressPercentage: (financialData.currentEmergencyFund / (financialData.monthlyExpenses * targetMonths)) * 100,
-    monthsToComplete: monthlyContribution > 0 ? 
-      Math.ceil(((financialData.monthlyExpenses * targetMonths) - financialData.currentEmergencyFund) / monthlyContribution) : 0
-  };
+  // Plano selecionado
+  const selectedPlanData = emergencyPlans.find(plan => plan.id === selectedPlan) || emergencyPlans[1];
 
-  // Formato de moeda
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-PT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(value);
-  };
+  // Cálculos do fundo de emergência usando função centralizada
+  const calculations = calculateEmergencyFundMetrics(
+    {
+      monthlyExpenses: financialData.monthlyExpenses,
+      currentEmergencyFund: financialData.currentEmergencyFund
+    },
+    { ...selectedPlanData, months: targetMonths },
+    monthlyContribution
+  );
+
+
 
   // Status do fundo
   const getFundStatus = () => {

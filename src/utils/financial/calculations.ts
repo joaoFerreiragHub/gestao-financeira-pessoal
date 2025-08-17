@@ -1,5 +1,7 @@
 // src/utils/financial/calculations.ts
-import { FinancialState, Income, Expense, Debt, Account } from '../../types/financial';
+// ✅ CÁLCULOS FINANCEIROS CONSOLIDADOS
+
+import { FinancialState, EmergencyFund, EmergencyPlan } from '../../types/financial';
 
 /**
  * Converter valor para mensal baseado na frequência
@@ -9,18 +11,12 @@ export const calculateMonthlyAmount = (
   frequency: 'monthly' | 'yearly' | 'weekly' | 'biweekly' | 'one-time'
 ): number => {
   switch (frequency) {
-    case 'monthly':
-      return amount;
-    case 'yearly':
-      return amount / 12;
-    case 'weekly':
-      return amount * 4.33; // ~52 semanas / 12 meses
-    case 'biweekly':
-      return amount * 2.17; // ~26 períodos / 12 meses
-    case 'one-time':
-      return 0; // Não conta para cálculos mensais regulares
-    default:
-      return amount;
+    case 'monthly': return amount;
+    case 'yearly': return amount / 12;
+    case 'weekly': return amount * 4.33; // 52 semanas / 12 meses
+    case 'biweekly': return amount * 2.17; // 26 quinzenas / 12 meses
+    case 'one-time': return 0; // Não conta para cálculos mensais
+    default: return amount;
   }
 };
 
@@ -32,40 +28,28 @@ export const calculateYearlyAmount = (
   frequency: 'monthly' | 'yearly' | 'weekly' | 'biweekly' | 'one-time'
 ): number => {
   switch (frequency) {
-    case 'monthly':
-      return amount * 12;
-    case 'yearly':
-      return amount;
-    case 'weekly':
-      return amount * 52;
-    case 'biweekly':
-      return amount * 26;
-    case 'one-time':
-      return amount;
-    default:
-      return amount * 12;
+    case 'monthly': return amount * 12;
+    case 'yearly': return amount;
+    case 'weekly': return amount * 52;
+    case 'biweekly': return amount * 26;
+    case 'one-time': return amount; // Valor único
+    default: return amount;
   }
 };
 
 /**
  * Calcular total de saldos das contas
  */
-export const calculateTotalBalance = (accounts: Account[]): number => {
+export const calculateTotalBalance = (accounts: FinancialState['accounts']): number => {
   return accounts
     .filter(account => account.isActive)
-    .reduce((sum, account) => {
-      // Contas de crédito e empréstimos são passivos (valores negativos)
-      if (account.type === 'credit' || account.type === 'loan') {
-        return sum - Math.abs(account.balance);
-      }
-      return sum + account.balance;
-    }, 0);
+    .reduce((sum, account) => sum + account.balance, 0);
 };
 
 /**
  * Calcular rendimento mensal total
  */
-export const calculateMonthlyIncome = (incomes: Income[]): number => {
+export const calculateMonthlyIncome = (incomes: FinancialState['incomes']): number => {
   return incomes
     .filter(income => income.isActive)
     .reduce((sum, income) => 
@@ -75,7 +59,7 @@ export const calculateMonthlyIncome = (incomes: Income[]): number => {
 /**
  * Calcular despesas mensais totais
  */
-export const calculateMonthlyExpenses = (expenses: Expense[]): number => {
+export const calculateMonthlyExpenses = (expenses: FinancialState['expenses']): number => {
   return expenses
     .filter(expense => expense.isActive)
     .reduce((sum, expense) => 
@@ -83,29 +67,9 @@ export const calculateMonthlyExpenses = (expenses: Expense[]): number => {
 };
 
 /**
- * Calcular despesas fixas mensais
- */
-export const calculateMonthlyFixedExpenses = (expenses: Expense[]): number => {
-  return expenses
-    .filter(expense => expense.isActive && expense.type === 'fixed')
-    .reduce((sum, expense) => 
-      sum + calculateMonthlyAmount(expense.amount, expense.frequency), 0);
-};
-
-/**
- * Calcular despesas variáveis mensais
- */
-export const calculateMonthlyVariableExpenses = (expenses: Expense[]): number => {
-  return expenses
-    .filter(expense => expense.isActive && expense.type === 'variable')
-    .reduce((sum, expense) => 
-      sum + calculateMonthlyAmount(expense.amount, expense.frequency), 0);
-};
-
-/**
  * Calcular total de dívidas
  */
-export const calculateTotalDebt = (debts: Debt[]): number => {
+export const calculateTotalDebt = (debts: FinancialState['debts']): number => {
   return debts
     .filter(debt => debt.isActive)
     .reduce((sum, debt) => sum + debt.remainingAmount, 0);
@@ -114,7 +78,7 @@ export const calculateTotalDebt = (debts: Debt[]): number => {
 /**
  * Calcular pagamentos mensais de dívidas
  */
-export const calculateMonthlyDebtPayments = (debts: Debt[]): number => {
+export const calculateMonthlyDebtPayments = (debts: FinancialState['debts']): number => {
   return debts
     .filter(debt => debt.isActive)
     .reduce((sum, debt) => sum + debt.monthlyPayment, 0);
@@ -135,13 +99,8 @@ export const calculateMonthlySavings = (state: FinancialState): number => {
  * Calcular patrimônio líquido
  */
 export const calculateNetWorth = (state: FinancialState): number => {
-  const totalAssets = calculateTotalBalance(state.accounts.filter(a => 
-    a.type !== 'credit' && a.type !== 'loan'
-  ));
-  const totalLiabilities = calculateTotalDebt(state.debts) + 
-    Math.abs(calculateTotalBalance(state.accounts.filter(a => 
-      a.type === 'credit' || a.type === 'loan'
-    )));
+  const totalAssets = calculateTotalBalance(state.accounts);
+  const totalLiabilities = calculateTotalDebt(state.debts);
   
   return totalAssets - totalLiabilities;
 };
@@ -158,188 +117,125 @@ export const calculateSavingsRate = (state: FinancialState): number => {
 };
 
 /**
- * Calcular ratio dívida/rendimento
+ * Calcular ratio dívida/patrimônio
  */
-export const calculateDebtToIncomeRatio = (state: FinancialState): number => {
-  const monthlyIncome = calculateMonthlyIncome(state.incomes);
-  const monthlyDebtPayments = calculateMonthlyDebtPayments(state.debts);
+export const calculateDebtToAssetRatio = (state: FinancialState): number => {
+  const totalAssets = calculateTotalBalance(state.accounts);
+  const totalDebt = calculateTotalDebt(state.debts);
   
-  if (monthlyIncome === 0) return 0;
-  return (monthlyDebtPayments / monthlyIncome) * 100;
+  if (totalAssets === 0) return totalDebt > 0 ? 100 : 0;
+  return (totalDebt / totalAssets) * 100;
 };
 
 /**
- * Calcular ratio despesas/rendimento
+ * Calcular meses de fundo de emergência
  */
-export const calculateExpenseToIncomeRatio = (state: FinancialState): number => {
-  const monthlyIncome = calculateMonthlyIncome(state.incomes);
+export const calculateEmergencyFundMonths = (state: FinancialState): number => {
+  const totalBalance = state.emergencyFund?.currentAmount || 0;
   const monthlyExpenses = calculateMonthlyExpenses(state.expenses);
   
-  if (monthlyIncome === 0) return 0;
-  return (monthlyExpenses / monthlyIncome) * 100;
+  if (monthlyExpenses === 0) return 0;
+  return totalBalance / monthlyExpenses;
 };
 
-/**
- * Calcular meses para quitar dívida
- */
-export const calculateMonthsToPayOffDebt = (
-  remainingAmount: number,
-  monthlyPayment: number,
-  interestRate: number
-): number => {
-  if (monthlyPayment <= 0) return Infinity;
-  
-  const monthlyInterestRate = interestRate / 100 / 12;
-  
-  // Se não há juros, é simples divisão
-  if (monthlyInterestRate === 0) {
-    return Math.ceil(remainingAmount / monthlyPayment);
-  }
-  
-  // Fórmula para empréstimos com juros compostos
-  const numerator = Math.log(1 + (remainingAmount * monthlyInterestRate) / monthlyPayment);
-  const denominator = Math.log(1 + monthlyInterestRate);
-  
-  return Math.ceil(numerator / denominator);
-};
+// ===== CÁLCULOS ESPECÍFICOS DO FUNDO DE EMERGÊNCIA =====
+
+export interface EmergencyFundMetrics {
+  targetAmount: number;
+  progressPercentage: number;
+  remaining: number;
+  currentMonths: number;
+  monthsToComplete: number;
+  isComplete: boolean;
+}
 
 /**
- * Calcular total de juros a pagar
+ * Calcular métricas do fundo de emergência
  */
-export const calculateTotalInterest = (
-  remainingAmount: number,
-  monthlyPayment: number,
-  interestRate: number
-): number => {
-  const months = calculateMonthsToPayOffDebt(remainingAmount, monthlyPayment, interestRate);
-  
-  if (months === Infinity) return 0;
-  
-  const totalPaid = monthlyPayment * months;
-  return Math.max(0, totalPaid - remainingAmount);
-};
+export const calculateEmergencyFundMetrics = (
+  data: { monthlyExpenses: number; currentEmergencyFund: number },
+  plan: EmergencyPlan,
+  monthlyContribution: number = 0
+): EmergencyFundMetrics => {
+  const targetAmount = data.monthlyExpenses * plan.months;
+  const progressPercentage = targetAmount > 0 ? (data.currentEmergencyFund / targetAmount) * 100 : 0;
+  const remaining = Math.max(0, targetAmount - data.currentEmergencyFund);
+  const currentMonths = data.monthlyExpenses > 0 ? data.currentEmergencyFund / data.monthlyExpenses : 0;
+  const monthsToComplete = monthlyContribution > 0 ? Math.ceil(remaining / monthlyContribution) : 0;
+  const isComplete = progressPercentage >= 100;
 
-// src/utils/financial/formatters.ts
-/**
- * Formatar valores monetários
- */
-export const formatCurrency = (
-  value: number,
-  currency: string = 'EUR',
-  locale: string = 'pt-PT'
-): string => {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
-};
-
-/**
- * Formatar percentagens
- */
-export const formatPercentage = (
-  value: number,
-  decimals: number = 1,
-  locale: string = 'pt-PT'
-): string => {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  }).format(value / 100);
-};
-
-/**
- * Formatar números grandes com sufixos
- */
-export const formatLargeNumber = (
-  value: number,
-  locale: string = 'pt-PT'
-): string => {
-  const absValue = Math.abs(value);
-  
-  if (absValue >= 1_000_000) {
-    return (value / 1_000_000).toFixed(1) + 'M';
-  } else if (absValue >= 1_000) {
-    return (value / 1_000).toFixed(1) + 'k';
-  }
-  
-  return value.toString();
-};
-
-/**
- * Formatar datas de forma amigável
- */
-export const formatDate = (
-  date: string | Date,
-  format: 'short' | 'medium' | 'long' = 'medium',
-  locale: string = 'pt-PT'
-): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
-  const options: Intl.DateTimeFormatOptions = {
-    short: { day: '2-digit', month: '2-digit', year: 'numeric' },
-    medium: { day: '2-digit', month: 'short', year: 'numeric' },
-    long: { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' }
+  return {
+    targetAmount,
+    progressPercentage,
+    remaining,
+    currentMonths,
+    monthsToComplete,
+    isComplete
   };
-  
-  return new Intl.DateTimeFormat(locale, options[format]).format(dateObj);
 };
 
 /**
- * Formatar período relativo (ex: "há 2 dias")
+ * Calcular saúde financeira geral
  */
-export const formatRelativeTime = (
-  date: string | Date,
-  locale: string = 'pt-PT'
-): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const now = new Date();
-  const diffInSeconds = (now.getTime() - dateObj.getTime()) / 1000;
+export const calculateFinancialHealth = (state: FinancialState) => {
+  const savingsRate = calculateSavingsRate(state);
+  const debtToAssetRatio = calculateDebtToAssetRatio(state);
+  const emergencyFundMonths = calculateEmergencyFundMonths(state);
   
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  // Cálculo do score (0-100)
+  let score = 0;
   
-  if (diffInSeconds < 60) {
-    return rtf.format(-Math.floor(diffInSeconds), 'second');
-  } else if (diffInSeconds < 3600) {
-    return rtf.format(-Math.floor(diffInSeconds / 60), 'minute');
-  } else if (diffInSeconds < 86400) {
-    return rtf.format(-Math.floor(diffInSeconds / 3600), 'hour');
-  } else if (diffInSeconds < 2592000) {
-    return rtf.format(-Math.floor(diffInSeconds / 86400), 'day');
-  } else if (diffInSeconds < 31536000) {
-    return rtf.format(-Math.floor(diffInSeconds / 2592000), 'month');
+  // Taxa de poupança (30 pontos)
+  if (savingsRate >= 20) score += 30;
+  else if (savingsRate >= 10) score += 20;
+  else if (savingsRate >= 5) score += 10;
+  
+  // Ratio de dívida (25 pontos)
+  if (debtToAssetRatio <= 20) score += 25;
+  else if (debtToAssetRatio <= 40) score += 15;
+  else if (debtToAssetRatio <= 60) score += 5;
+  
+  // Fundo de emergência (25 pontos)
+  if (emergencyFundMonths >= 6) score += 25;
+  else if (emergencyFundMonths >= 3) score += 15;
+  else if (emergencyFundMonths >= 1) score += 5;
+  
+  // Rendimento positivo (20 pontos)
+  const monthlySavings = calculateMonthlySavings(state);
+  if (monthlySavings > 0) score += 20;
+  else if (monthlySavings >= 0) score += 10;
+  
+  // Status baseado no score
+  let status = 'Crítica';
+  const recommendations: string[] = [];
+  
+  if (score >= 80) {
+    status = 'Excelente';
+    recommendations.push('Continue mantendo este excelente desempenho financeiro!');
+  } else if (score >= 60) {
+    status = 'Boa';
+    recommendations.push('Sua situação financeira está boa, mas há espaço para melhorias.');
+  } else if (score >= 40) {
+    status = 'Razoável';
+    recommendations.push('Considere aumentar sua taxa de poupança.');
+    if (emergencyFundMonths < 3) {
+      recommendations.push('Priorize a construção do seu fundo de emergência.');
+    }
+  } else if (score >= 20) {
+    status = 'Atenção';
+    recommendations.push('Sua situação financeira precisa de atenção urgente.');
+    recommendations.push('Revise seus gastos e tente aumentar sua poupança.');
   } else {
-    return rtf.format(-Math.floor(diffInSeconds / 31536000), 'year');
+    recommendations.push('Situação crítica: busque ajuda financeira profissional.');
+    recommendations.push('Foque em reduzir despesas e eliminar dívidas.');
   }
-};
-
-/**
- * Ocultar valores sensíveis
- */
-export const hideValue = (
-  value: string | number,
-  showValue: boolean,
-  placeholder: string = '••••••'
-): string => {
-  if (showValue) {
-    return typeof value === 'number' ? formatCurrency(value) : value.toString();
-  }
-  return placeholder;
-};
-
-/**
- * Validar e formatar entrada de valor monetário
- */
-export const parseMonetaryInput = (input: string): number => {
-  // Remove tudo exceto números, vírgulas e pontos
-  const cleaned = input.replace(/[^\d.,]/g, '');
   
-  // Converte vírgula para ponto (padrão português)
-  const normalized = cleaned.replace(',', '.');
-  
-  const parsed = parseFloat(normalized);
-  return isNaN(parsed) ? 0 : parsed;
+  return {
+    score,
+    status,
+    savingsRate,
+    debtToAssetRatio,
+    emergencyFundMonths,
+    recommendations
+  };
 };

@@ -21,9 +21,9 @@ import {
   ChevronRight,
   Sparkles,
   Building2,
-  FileText,
   Shield  
 } from 'lucide-react';
+import { formatCurrency } from '../../utils/financial/formatters';
 
 // Import the new sections we created
 import { AccountSection } from '../../components/financial/accounts/AccountSection';
@@ -61,12 +61,7 @@ const ModernFinanceDashboard = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-PT', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(Math.abs(value));
-  };
+
 
   const getVariationDisplay = (value: number) => {
     const isPositive = value > 0;

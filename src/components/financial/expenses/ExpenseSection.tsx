@@ -16,8 +16,8 @@ import {
 
 // Import hooks and components
 import { useExpenseData } from './hooks/useExpenseData';
-import { useCurrencyFormat } from '../shared/useCurrencyFormat';
-import { useDebtExpenseSync } from '../shared/useDebtExpenseSync';
+import { useCurrencyFormat } from '../shared/hooks/useCurrencyFormat';
+import { useDebtExpenseSync } from '../shared/hooks/useDebtExpenseSync';
 import { ExpenseOverview } from './components/ExpenseOverview';
 import { DebtManagement } from './components/DebtManagement';
 

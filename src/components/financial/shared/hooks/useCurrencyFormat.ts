@@ -5,7 +5,7 @@ import {
   formatPercentage as formatPercentageUtil,
   parseMonetaryInput as parseMonetaryInputUtil,
   hideValue as hideValueUtil
-} from '../../../utils/financial/formatters';
+} from '../../../../utils/financial/formatters';
 
 interface UseCurrencyFormatOptions {
   currency?: string;

@@ -1,32 +1,8 @@
 // src/components/financial/shared/hooks/useDebtExpenseSync.ts
 import { useState, useEffect, useCallback } from 'react';
+import { Debt, ExpenseEntry, DebtExpenseSync } from '../../../../types/financial';
 
-interface Debt {
-  id: string;
-  name: string;
-  monthlyPayment: number;
-  type: string;
-}
-
-interface ExpenseEntry {
-  id: string;
-  description: string;
-  amount: number;
-  categoryId: string;
-  date: string;
-  isRecurring: boolean;
-  debtId?: string;
-}
-
-interface DebtExpenseSync {
-  debtId: string;
-  expenseId: string;
-  amount: number;
-  isAutomatic: boolean;
-  syncedAt: string;
-}
-
-interface UseDebtExpenseSyncReturn {
+export interface UseDebtExpenseSyncReturn {
   syncData: DebtExpenseSync[];
   syncDebtWithExpense: (debtId: string, expenseId: string) => void;
   createExpenseFromDebt: (debt: Debt) => ExpenseEntry;
